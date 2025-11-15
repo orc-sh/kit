@@ -37,6 +37,12 @@ def get_frontend_url() -> str:
     return os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 
-def get_auth_service_url() -> str:
-    """Get authentication service URL"""
-    return os.getenv("AUTH_SERVICE_URL", "http://localhost:8001")
+def get_auth_service_port() -> int:
+    """Get port for auth service"""
+    return int(os.getenv("AUTH_SERVICE_PORT", "8001"))
+
+
+def get_auth_service_host() -> str:
+    """Get host for auth service"""
+    return os.getenv("AUTH_SERVICE_HOST", "0.0.0.0")
+
