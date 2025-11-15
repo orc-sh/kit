@@ -7,18 +7,50 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+node_modules/
+dist/
+dist-ssr/
 *.local
+build/
+.next/
+out/
+storybook-static/
+.cache/
+coverage/
+.coverage/
+*.coverage
+.nyc_output
+.vitest
+.vitest-temp
 
-# Editor directories and files
+# Build and cache artifacts
+.eslintcache
+.turbo/
+.vite/
+.parcel-cache/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+
+# Editor and OS files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# Test artifacts
+cypress/videos/
+cypress/screenshots/
+playwright-report/
+test-results/
