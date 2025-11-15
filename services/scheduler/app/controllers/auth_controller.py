@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from app.middleware.auth_middleware import get_current_user
+from app.models.user import User
 from app.services.auth_service import get_auth_service
 
 router = APIRouter()
@@ -138,7 +139,7 @@ async def refresh_access_token(refresh_request: RefreshTokenRequest):
 
 
 @router.post("/logout")
-async def logout(user: dict = Depends(get_current_user)):
+async def logout(user: User = Depends(get_current_user)):
     """
     Sign out the current user
 
@@ -158,7 +159,7 @@ async def logout(user: dict = Depends(get_current_user)):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(request: Request, user: dict = Depends(get_current_user)):
+async def get_current_user_info(request: Request, user: User = Depends(get_current_user)):
     """
     Get current authenticated user's information
 

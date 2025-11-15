@@ -4,6 +4,8 @@ import jwt
 from fastapi import HTTPException, Request, status
 from fastapi.security import HTTPBearer
 
+from app.context.user_context import set_current_user_context
+from app.models.user import User
 from config.environment import get_supabase_jwt_secret
 
 security = HTTPBearer()
@@ -51,7 +53,7 @@ class AuthMiddleware:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    async def __call__(self, request: Request) -> Optional[dict]:
+    async def __call__(self, request: Request) -> Optional[User]:
         """
         Extract and verify token from request headers
 
@@ -59,7 +61,7 @@ class AuthMiddleware:
             request: FastAPI request object
 
         Returns:
-            User information from token
+            User object with authentication information
 
         Raises:
             HTTPException: If authentication fails
@@ -90,12 +92,18 @@ class AuthMiddleware:
             )
 
         # Verify token and extract user info
-        user_info = self.verify_token(token)
+        jwt_payload = self.verify_token(token)
 
-        # Add user info to request state for use in route handlers
-        request.state.user = user_info
+        # Create User instance from JWT payload
+        user = User.from_jwt_payload(jwt_payload)
 
-        return user_info
+        # Set user in thread-safe context for access throughout the application
+        set_current_user_context(user)
+
+        # Also add to request state for backwards compatibility
+        request.state.user = user
+
+        return user
 
 
 # Lazy singleton instance
@@ -110,7 +118,7 @@ def get_auth_middleware() -> AuthMiddleware:
     return _auth_middleware_instance
 
 
-async def get_current_user(request: Request) -> dict:
+async def get_current_user(request: Request) -> User:
     """
     Dependency function to get current authenticated user
 
@@ -118,10 +126,10 @@ async def get_current_user(request: Request) -> dict:
         request: FastAPI request object
 
     Returns:
-        User information from token
+        User object with authentication information
     """
     auth_middleware = get_auth_middleware()
-    user_info = await auth_middleware(request)
-    if user_info is None:
+    user = await auth_middleware(request)
+    if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    return user_info
+    return user

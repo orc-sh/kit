@@ -1,15 +1,17 @@
 version: '3.8'
 services:
-  postgres:
-    image: postgres:15
+  mysql:
+    image: mysql:8.0
     environment:
-      POSTGRES_DB: scheduler_db
-      POSTGRES_USER: scheduler_user
-      POSTGRES_PASSWORD: scheduler_pass
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: job_scheduler
+      MYSQL_USER: scheduler_user
+      MYSQL_PASSWORD: scheduler_pass
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
 
   redis:
     image: redis:7-alpine
@@ -17,4 +19,4 @@ services:
       - "6379:6379"
 
 volumes:
-  postgres_data:
+  mysql_data:

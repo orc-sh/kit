@@ -34,4 +34,4 @@ def get_supabase_jwt_secret() -> str:
 
 def get_frontend_url() -> str:
     """Get frontend URL for CORS and redirects"""
-    return os.getenv("FRONTEND_URL", "http://localhost:5173")
+    return os.getenv("FRONTEND_URL", "http://localhost:3000")

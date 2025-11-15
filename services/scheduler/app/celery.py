@@ -17,10 +17,3 @@ scheduler = Celery(
     backend=REDIS_URL,
     broker_connection_retry_on_startup=True,
 )
-
-scheduler.conf.update(
-    {
-        "beat_dburi": os.getenv("DATABASE_URL"),
-        "CELERY_BEAT_SCHEDULER": "sqlalchemy_celery_beat.schedulers:DatabaseScheduler",
-    }
-)
