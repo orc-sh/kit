@@ -10,17 +10,17 @@ def init():
 
 def get_supabase_url() -> str:
     """Get Supabase project URL from environment"""
-    url = os.getenv("SUPABASE_URL")
+    url = os.getenv("SUPABASE_PROJECT_URL")
     if not url:
-        raise ValueError("SUPABASE_URL environment variable is not set")
+        raise ValueError("SUPABASE_PROJECT_URL environment variable is not set")
     return url
 
 
 def get_supabase_key() -> str:
     """Get Supabase anon/public key from environment"""
-    key = os.getenv("SUPABASE_KEY")
+    key = os.getenv("SUPABASE_ANON_PUBLIC_KEY")
     if not key:
-        raise ValueError("SUPABASE_KEY environment variable is not set")
+        raise ValueError("SUPABASE_ANON_PUBLIC_KEY environment variable is not set")
     return key
 
 

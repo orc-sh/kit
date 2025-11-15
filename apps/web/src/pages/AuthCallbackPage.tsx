@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,9 +9,15 @@ const AuthCallbackPage = () => {
   const navigate = useNavigate();
   const { handleOAuthCallback } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const hasProcessedCallback = useRef(false);
 
   useEffect(() => {
     const processCallback = async () => {
+      // Prevent duplicate processing
+      if (hasProcessedCallback.current) {
+        return;
+      }
+
       // Get authorization code from URL
       const code = searchParams.get('code');
       const errorParam = searchParams.get('error');
@@ -28,6 +34,9 @@ const AuthCallbackPage = () => {
         setTimeout(() => navigate('/login'), 3000);
         return;
       }
+
+      // Mark as processing to prevent duplicate calls
+      hasProcessedCallback.current = true;
 
       try {
         // Exchange code for tokens
