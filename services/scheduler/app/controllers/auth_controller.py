@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from app.middleware.auth_middleware import get_current_user
-from app.services.auth_service import auth_service
+from app.services.auth_service import get_auth_service
 
 router = APIRouter()
 
@@ -89,7 +89,7 @@ async def initiate_oauth(provider: str):
         )
 
     try:
-        oauth_url = auth_service.get_oauth_url(provider.lower())
+        oauth_url = get_auth_service().get_oauth_url(provider.lower())
         return {"url": oauth_url, "provider": provider}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to initiate OAuth flow: {str(e)}")
@@ -110,7 +110,7 @@ async def oauth_callback(callback_request: OAuthCallbackRequest):
         HTTPException: If code exchange fails
     """
     try:
-        session_data = await auth_service.exchange_code_for_session(callback_request.code)
+        session_data = await get_auth_service().exchange_code_for_session(callback_request.code)
         return session_data
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to exchange code for session: {str(e)}")
@@ -131,7 +131,7 @@ async def refresh_access_token(refresh_request: RefreshTokenRequest):
         HTTPException: If token refresh fails
     """
     try:
-        new_tokens = await auth_service.refresh_token(refresh_request.refresh_token)
+        new_tokens = await get_auth_service().refresh_token(refresh_request.refresh_token)
         return new_tokens
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Failed to refresh token: {str(e)}")
@@ -149,7 +149,7 @@ async def logout(user: dict = Depends(get_current_user)):
         Success message
     """
     # Extract token from request if needed
-    success = await auth_service.sign_out("")
+    success = await get_auth_service().sign_out("")
 
     if success:
         return {"message": "Successfully logged out"}
@@ -173,7 +173,7 @@ async def get_current_user_info(request: Request, user: dict = Depends(get_curre
     auth_header = request.headers.get("Authorization", "")
     token = auth_header.replace("Bearer ", "")
 
-    user_info = await auth_service.get_user(token)
+    user_info = await get_auth_service().get_user(token)
 
     if not user_info:
         raise HTTPException(status_code=401, detail="Invalid or expired token")

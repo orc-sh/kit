@@ -12,8 +12,14 @@ security = HTTPBearer()
 class AuthMiddleware:
     """Middleware for JWT token verification"""
 
+    _instance = None
+    _jwt_secret = None
+
     def __init__(self):
-        self.jwt_secret = get_supabase_jwt_secret()
+        # Lazy initialization - only load secret when first needed
+        if AuthMiddleware._jwt_secret is None:
+            AuthMiddleware._jwt_secret = get_supabase_jwt_secret()
+        self.jwt_secret = AuthMiddleware._jwt_secret
 
     def verify_token(self, token: str) -> dict:
         """
@@ -92,8 +98,16 @@ class AuthMiddleware:
         return user_info
 
 
-# Singleton instance
-auth_middleware = AuthMiddleware()
+# Lazy singleton instance
+_auth_middleware_instance: Optional[AuthMiddleware] = None
+
+
+def get_auth_middleware() -> AuthMiddleware:
+    """Get or create the singleton AuthMiddleware instance"""
+    global _auth_middleware_instance
+    if _auth_middleware_instance is None:
+        _auth_middleware_instance = AuthMiddleware()
+    return _auth_middleware_instance
 
 
 async def get_current_user(request: Request) -> dict:
@@ -106,4 +120,8 @@ async def get_current_user(request: Request) -> dict:
     Returns:
         User information from token
     """
-    return await auth_middleware(request)
+    auth_middleware = get_auth_middleware()
+    user_info = await auth_middleware(request)
+    if user_info is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+    return user_info

@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 
 from supabase import Client, create_client
 
@@ -26,7 +26,7 @@ class AuthService:
         redirect_to = f"{self.frontend_url}/auth/callback"
 
         response = self.supabase.auth.sign_in_with_oauth(
-            {"provider": provider, "options": {"redirect_to": redirect_to}}
+            cast(dict, {"provider": provider, "options": {"redirect_to": redirect_to}})  # type: ignore
         )
 
         return response.url
@@ -41,9 +41,9 @@ class AuthService:
         Returns:
             Dictionary containing access_token, refresh_token, and user info
         """
-        response = self.supabase.auth.exchange_code_for_session({"auth_code": code})
+        response = self.supabase.auth.exchange_code_for_session(cast(dict, {"auth_code": code}))  # type: ignore
 
-        if not response.session:
+        if not response.session or not response.user:
             raise ValueError("Failed to exchange code for session")
 
         return {
@@ -110,18 +110,28 @@ class AuthService:
             self.supabase.auth.set_session(access_token, "")
             response = self.supabase.auth.get_user(access_token)
 
-            if response.user:
-                return {
-                    "id": response.user.id,
-                    "email": response.user.email,
-                    "user_metadata": response.user.user_metadata,
-                    "created_at": response.user.created_at,
-                }
-            return None
+            if not response.user:  # type: ignore
+                return None
+
+            user = response.user  # type: ignore
+            return {
+                "id": user.id,
+                "email": user.email,
+                "user_metadata": user.user_metadata,
+                "created_at": user.created_at,
+            }
         except Exception as e:
             print(f"Error getting user: {e}")
             return None
 
 
-# Singleton instance
-auth_service = AuthService()
+# Lazy singleton instance
+_auth_service_instance: Optional[AuthService] = None
+
+
+def get_auth_service() -> AuthService:
+    """Get or create the singleton AuthService instance"""
+    global _auth_service_instance
+    if _auth_service_instance is None:
+        _auth_service_instance = AuthService()
+    return _auth_service_instance

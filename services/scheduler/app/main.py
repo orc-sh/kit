@@ -1,12 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import tasks  # noqa: F401
-from app.celery import scheduler  # noqa: F401
-from app.controllers import auth_controller, health_controller, task_controller
+from app.controllers import auth_controller, health_controller
 from app.models.base import Base
-from config.environment import get_frontend_url
+from config.environment import get_frontend_url, init
 from db.engine import engine
+
+# Initialize environment variables FIRST before importing modules that need them
+init()
 
 # Create tables if they do not exist
 Base.metadata.create_all(bind=engine)
@@ -30,4 +31,3 @@ app.add_middleware(
 # Include each router with a specific prefix and tags for better organization
 app.include_router(health_controller.router, prefix="", tags=["Health"])
 app.include_router(auth_controller.router, prefix="/auth", tags=["Authentication"])
-app.include_router(task_controller.router, prefix="/tasks", tags=["Tasks"])
