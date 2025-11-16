@@ -4,8 +4,9 @@
   "description": "Lightweight webhook scheduling service",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"pnpm dev:web\" \"pnpm dev:api\" --names \"WEB,API\" --prefix-colors \"cyan,yellow\"",
+    "dev": "concurrently \"pnpm dev:web\" \"pnpm dev:api\" \"pnpm dev:auth\" --names \"WEB,API,AUTH\" --prefix-colors \"cyan,yellow,green\"",
     "dev:web": "cd apps/web && pnpm dev",
+    "dev:auth": "cd services/auth && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001",
     "dev:api": "cd services/scheduler && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
     "build": "pnpm build:web",
     "build:web": "cd apps/web && pnpm build",

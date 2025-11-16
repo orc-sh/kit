@@ -8,15 +8,16 @@ from config.environment import get_frontend_url, init
 init()
 
 # Create the FastAPI application
-app = FastAPI(title="Authentication Service API", version="1.0.0")
+app = FastAPI(title="Authentication Service API", version="1.0.0", port=8001)
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         get_frontend_url(),
-        "http://localhost:3000",
-        "http://localhost:8000",  # Allow scheduler service
+        "https://www.localhooks.com",
+        "http://localhost:3000",  # Allow web service
+        "http://localhost:8000", # Allow scheduler service
     ],
     allow_credentials=True,
     allow_methods=["*"],

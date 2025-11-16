@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 import { useAuthStore } from '@/stores/auth-store';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 /**
  * Get access token from Zustand store
