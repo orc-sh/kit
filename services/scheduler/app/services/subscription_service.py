@@ -116,7 +116,7 @@ class SubscriptionService:
                 trial_end=self._parse_datetime(  # type: ignore[attr-defined]
                     getattr(cb_subscription, "trial_end", None)
                 ),
-                metadata=(
+                subscription_metadata=(
                     json.dumps(vars(cb_subscription))  # type: ignore[attr-defined]
                     if hasattr(cb_subscription, "__dict__")
                     else None
@@ -223,7 +223,7 @@ class SubscriptionService:
             subscription.trial_end = self._parse_datetime(  # type: ignore[attr-defined,assignment]
                 getattr(cb_subscription, "trial_end", None)
             )
-            subscription.metadata = (  # type: ignore[attr-defined,assignment]
+            subscription.subscription_metadata = (  # type: ignore[attr-defined,assignment]
                 json.dumps(vars(cb_subscription)) if hasattr(cb_subscription, "__dict__") else None
             )
 
@@ -274,7 +274,7 @@ class SubscriptionService:
             subscription.status = cb_subscription.status  # type: ignore[attr-defined]
             subscription.cancelled_at = datetime.utcnow()  # type: ignore[assignment]
             subscription.cancel_reason = cancel_reason  # type: ignore[assignment]
-            subscription.metadata = (  # type: ignore[attr-defined,assignment]
+            subscription.subscription_metadata = (  # type: ignore[attr-defined,assignment]
                 json.dumps(vars(cb_subscription)) if hasattr(cb_subscription, "__dict__") else None
             )
 
@@ -353,7 +353,7 @@ class SubscriptionService:
                 subscription.trial_end = self._parse_datetime(  # type: ignore[attr-defined,assignment]
                     getattr(cb_subscription, "trial_end", None)
                 )
-                subscription.metadata = (  # type: ignore[attr-defined,assignment]
+                subscription.subscription_metadata = (  # type: ignore[attr-defined,assignment]
                     json.dumps(vars(cb_subscription)) if hasattr(cb_subscription, "__dict__") else None
                 )
             else:
@@ -374,7 +374,7 @@ class SubscriptionService:
                     trial_end=self._parse_datetime(  # type: ignore[attr-defined]
                         getattr(cb_subscription, "trial_end", None)
                     ),
-                    metadata=(
+                    subscription_metadata=(
                         json.dumps(vars(cb_subscription))  # type: ignore[attr-defined]
                         if hasattr(cb_subscription, "__dict__")
                         else None

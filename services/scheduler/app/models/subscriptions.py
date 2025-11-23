@@ -22,7 +22,7 @@ class Subscription(Base):
     trial_end = Column(TIMESTAMP, nullable=True)
     cancelled_at = Column(TIMESTAMP, nullable=True)
     cancel_reason = Column(String(255), nullable=True)
-    metadata = Column(Text, nullable=True)  # JSON string for additional data
+    subscription_metadata = Column(Text, nullable=True)  # JSON string for additional data
     created_at = Column(TIMESTAMP, server_default=func.current_timestamp())
     updated_at = Column(TIMESTAMP, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
 
