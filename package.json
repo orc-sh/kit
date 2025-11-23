@@ -4,8 +4,9 @@
   "description": "Lightweight webhook scheduling service",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"pnpm dev:web\" \"pnpm dev:api\" --names \"WEB,API\" --prefix-colors \"cyan,yellow\"",
+    "dev": "concurrently \"pnpm dev:web\" \"pnpm dev:api\" \"pnpm dev:auth\" --names \"WEB,API,AUTH\" --prefix-colors \"cyan,yellow,green\"",
     "dev:web": "cd apps/web && pnpm dev",
+    "dev:auth": "cd services/auth && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001",
     "dev:api": "cd services/scheduler && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
     "build": "pnpm build:web",
     "build:web": "cd apps/web && pnpm build",
@@ -14,7 +15,7 @@
     "test:api": "cd services/scheduler && python -m pytest",
     "lint": "pnpm lint:web && pnpm lint:api",
     "lint:web": "cd apps/web && pnpm lint",
-    "lint:api": "cd services/scheduler && black . && isort . && flake8",
+    "lint:api": "cd services/scheduler && python -m black . && python -m isort . && python -m flake8",
     "format": "pnpm format:web",
     "format:web": "cd apps/web && pnpm format",
     "format:check": "pnpm format:check:web",
@@ -53,5 +54,6 @@
     "monorepo"
   ],
   "author": "Ruban Thilak",
-  "license": "ISC"
+  "license": "ISC",
+  "packageManager": "pnpm@9.12.3+sha256.24235772cc4ac82a62627cd47f834c72667a2ce87799a846ec4e8e555e2d4b8b"
 }

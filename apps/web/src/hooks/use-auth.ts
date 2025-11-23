@@ -1,22 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api, { clearTokens } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-
-interface User {
-  id: string;
-  email: string;
-  user_metadata: Record<string, any>;
-}
-
-interface OAuthUrlResponse {
-  url: string;
-}
-
-interface OAuthCallbackResponse {
-  access_token: string;
-  refresh_token: string;
-  user: User;
-}
+import type { User, OAuthUrlResponse, OAuthCallbackResponse } from '@/types';
 
 /**
  * Hook to fetch current user
@@ -30,7 +15,7 @@ export const useCurrentUser = () => {
     queryKey: ['currentUser'],
     queryFn: async () => {
       try {
-        const response = await api.get<User>('/auth/me');
+        const response = await api.get<User>('/api/auth/me');
         setUser(response.data);
         return response.data;
       } catch (error) {
@@ -51,7 +36,7 @@ export const useCurrentUser = () => {
 export const useOAuthLogin = () => {
   return useMutation({
     mutationFn: async (provider: string) => {
-      const response = await api.get<OAuthUrlResponse>(`/auth/oauth/${provider}`);
+      const response = await api.get<OAuthUrlResponse>(`/api/oauth/${provider}`);
       return response.data;
     },
     onSuccess: (data) => {
@@ -70,7 +55,7 @@ export const useOAuthCallback = () => {
 
   return useMutation({
     mutationFn: async (code: string) => {
-      const response = await api.post<OAuthCallbackResponse>('/auth/oauth/callback', { code });
+      const response = await api.post<OAuthCallbackResponse>('/api/oauth/callback', { code });
       return response.data;
     },
     onSuccess: (data) => {
@@ -90,7 +75,7 @@ export const useLogout = () => {
 
   return useMutation({
     mutationFn: async () => {
-      await api.post('/auth/logout');
+      await api.post('/api/auth/logout');
     },
     onSettled: () => {
       logout();

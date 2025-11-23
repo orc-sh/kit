@@ -166,3 +166,33 @@ class User:
     def is_phone_confirmed(self) -> bool:
         """Check if user's phone is confirmed."""
         return self.phone_confirmed_at is not None
+
+    @property
+    def name(self) -> str:
+        """
+        Get user's display name.
+
+        Returns name from user_metadata if available, otherwise falls back to:
+        1. Full name from user_metadata
+        2. Email (username part)
+        3. User ID
+
+        Returns:
+            User's display name
+        """
+        # Try to get name from user_metadata
+        if self.user_metadata:
+            # Check for various name fields
+            if "name" in self.user_metadata:
+                return self.user_metadata["name"]
+            if "full_name" in self.user_metadata:
+                return self.user_metadata["full_name"]
+            if "display_name" in self.user_metadata:
+                return self.user_metadata["display_name"]
+
+        # Fall back to email username
+        if self.email:
+            return self.email.split("@")[0]
+
+        # Last resort: use ID
+        return self.id

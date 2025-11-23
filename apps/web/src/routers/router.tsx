@@ -3,7 +3,13 @@ import ProtectedRoute from '@/routers/guards/protected-route';
 import PublicRoute from '@/routers/guards/public-route';
 import LoginPage from '@/pages/login';
 import AuthCallbackPage from '@/pages/auth-callback';
+import CronBuilderPage from '@/pages/cron-builder';
 import DashboardPage from '@/pages/dashboard';
+import AddNewPage from '@/pages/add-new';
+import EditWebhookPage from '@/pages/edit';
+import WebhookDetailsPage from '@/pages/webhook-details';
+import NotificationsPage from '@/pages/notifications';
+import ProfilePage from '@/pages/profile';
 import NotFoundPage from '@/pages/not-found';
 
 export const AppRouter = () => {
@@ -15,9 +21,17 @@ export const AppRouter = () => {
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
       </Route>
 
+      {/* Public cron builder (no auth required) */}
+      <Route path="/cron-builder" element={<CronBuilderPage />} />
+
       {/* Protected routes */}
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/add-new" element={<AddNewPage />} />
+        <Route path="/webhooks/:id" element={<WebhookDetailsPage />} />
+        <Route path="/edit/:id" element={<EditWebhookPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
       {/* Redirect root to dashboard */}

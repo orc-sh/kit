@@ -17,3 +17,5 @@ sqlalchemy-celery-beat
 mysql-connector
 supabase
 pyjwt
+httpx
+croniter
