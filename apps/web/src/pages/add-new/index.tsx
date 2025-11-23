@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,7 +24,6 @@ import {
   Send,
   AlertCircle,
   Zap,
-  ExternalLink,
   Info,
   ChevronDown,
   Settings2,
@@ -117,6 +116,15 @@ const AddNewPage = () => {
   const queryParams = watch('queryParams');
   const httpMethod = watch('httpMethod');
 
+  // Check for returned cron expression from cron builder
+  useEffect(() => {
+    const selectedCron = sessionStorage.getItem('selectedCronExpression');
+    if (selectedCron) {
+      setValue('schedule', selectedCron);
+      sessionStorage.removeItem('selectedCronExpression');
+    }
+  }, [setValue]);
+
   const addHeader = () => {
     setValue('headers', [...headers, { key: '', value: '' }]);
   };
@@ -191,411 +199,496 @@ const AddNewPage = () => {
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background p-6 pl-24">
-        <div className="container mx-auto space-y-6 max-w-4xl">
-          <FadeIn>
-            <div className="flex items-center gap-2.5">
-              <Zap className="h-7 w-7 text-primary" />
-              <div>
-                <h1 className="text-3xl font-bold flex items-center gap-2.5">Create Webhook</h1>
-                <p className="text-muted-foreground text-sm">
-                  Schedule automated webhook calls to run on your custom schedule
-                </p>
-              </div>
-            </div>
-          </FadeIn>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {/* Basic Configuration Section */}
-            <FadeIn delay={0.1}>
-              <Card className="border rounded-lg">
-                <button
-                  type="button"
-                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-accent/50 transition-colors rounded-t-lg"
-                  onClick={() => {}}
-                >
-                  <div className="flex items-center gap-2 text-lg font-semibold">
-                    <Zap className="h-4 w-4 text-primary" />
-                    Basic Configuration
+        <div className="container mx-auto max-w-7xl">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column - Form */}
+            <div className="lg:col-span-2 space-y-6">
+              <FadeIn>
+                <div className="flex items-center gap-2.5">
+                  <Zap className="h-7 w-7 text-primary" />
+                  <div>
+                    <h1 className="text-3xl font-bold flex items-center gap-2.5">Create Webhook</h1>
+                    <p className="text-muted-foreground text-sm">
+                      Schedule automated webhook calls to run on your custom schedule
+                    </p>
                   </div>
-                  <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                </button>
-                <CardContent className="px-6 pb-6">
-                  <div className="space-y-4 pt-2">
-                    {/* Job Name */}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="jobName" className="text-xs font-medium">
-                        Name <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="jobName"
-                        {...register('jobName')}
-                        placeholder="e.g., Daily Report Generator"
-                        className="h-9"
-                      />
-                      {errors.jobName && (
-                        <p className="text-xs text-destructive flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3" />
-                          {errors.jobName.message}
-                        </p>
-                      )}
-                    </div>
+                </div>
+              </FadeIn>
 
-                    {/* Webhook URL */}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="webhookUrl" className="text-xs font-medium">
-                        Webhook URL <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="webhookUrl"
-                        {...register('webhookUrl')}
-                        placeholder="https://api.example.com/webhook"
-                        type="url"
-                        className="h-9 font-mono text-sm"
-                      />
-                      {errors.webhookUrl && (
-                        <p className="text-xs text-destructive flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3" />
-                          {errors.webhookUrl.message}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Schedule & Timezone */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="schedule" className="text-xs font-medium">
-                          Schedule (Cron Expression) <span className="text-destructive">*</span>
-                        </Label>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs text-muted-foreground hover:text-primary"
-                              onClick={() => window.open('https://crontab.guru', '_blank')}
-                            >
-                              <Info className="h-3 w-3 mr-1" />
-                              Need help?
-                              <ExternalLink className="h-2.5 w-2.5 ml-1" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="left">
-                            <p className="text-xs">Opens crontab.guru in a new tab</p>
-                          </TooltipContent>
-                        </Tooltip>
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                {/* Basic Configuration Section */}
+                <FadeIn delay={0.1}>
+                  <Card className="border rounded-lg">
+                    <button
+                      type="button"
+                      className="w-full px-6 py-4 flex items-center justify-between hover:bg-accent/50 transition-colors rounded-t-lg"
+                      onClick={() => {}}
+                    >
+                      <div className="flex items-center gap-2 text-lg font-semibold">
+                        <Zap className="h-4 w-4 text-primary" />
+                        Basic Configuration
                       </div>
-
-                      {/* Schedule Input and Timezone in a row */}
-                      <div className="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-2">
+                      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                    </button>
+                    <CardContent className="px-6 pb-6">
+                      <div className="space-y-4 pt-2">
+                        {/* Job Name */}
                         <div className="space-y-1.5">
+                          <Label htmlFor="jobName" className="text-xs font-medium">
+                            Name <span className="text-destructive">*</span>
+                          </Label>
                           <Input
-                            id="schedule"
-                            {...register('schedule')}
-                            placeholder="0 9 * * *"
-                            className="font-mono h-9 text-sm"
+                            id="jobName"
+                            {...register('jobName')}
+                            placeholder="e.g., Daily Report Generator"
+                            className="h-9"
                           />
-                          {errors.schedule && (
+                          {errors.jobName && (
                             <p className="text-xs text-destructive flex items-center gap-1">
                               <AlertCircle className="h-3 w-3" />
-                              {errors.schedule.message}
+                              {errors.jobName.message}
                             </p>
                           )}
                         </div>
 
+                        {/* Webhook URL */}
                         <div className="space-y-1.5">
-                          <Select
-                            value={watch('timezone')}
-                            onValueChange={(value) => setValue('timezone', value)}
-                          >
-                            <SelectTrigger id="timezone" className="h-9 text-left">
-                              <Globe className="h-3.5 w-3.5 mr-1.5" />
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {TIMEZONES.map((tz) => (
-                                <SelectItem key={tz.value} value={tz.value} className="text-sm">
-                                  {tz.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Label htmlFor="webhookUrl" className="text-xs font-medium">
+                            Webhook URL <span className="text-destructive">*</span>
+                          </Label>
+                          <Input
+                            id="webhookUrl"
+                            {...register('webhookUrl')}
+                            placeholder="https://api.example.com/webhook"
+                            type="url"
+                            className="h-9 font-mono text-sm"
+                          />
+                          {errors.webhookUrl && (
+                            <p className="text-xs text-destructive flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              {errors.webhookUrl.message}
+                            </p>
+                          )}
                         </div>
-                      </div>
 
-                      {/* Cron Presets */}
-                      <div className="space-y-1.5">
-                        <p className="text-xs text-muted-foreground">Quick presets:</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {CRON_PRESETS.map((preset) => (
-                            <Tooltip key={preset.value}>
+                        {/* Schedule & Timezone */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="schedule" className="text-xs font-medium">
+                              Schedule (Cron Expression) <span className="text-destructive">*</span>
+                            </Label>
+                            <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
                                   type="button"
-                                  variant={selectedPreset === preset.value ? 'default' : 'outline'}
+                                  variant="ghost"
                                   size="sm"
-                                  onClick={() => applyPreset(preset.value)}
-                                  className="h-7 text-xs px-2.5"
+                                  className="h-6 px-2 text-xs text-muted-foreground hover:text-primary"
+                                  onClick={() => {
+                                    const currentSchedule = watch('schedule');
+                                    const returnUrl = `/add-new`;
+                                    navigate(
+                                      `/cron-builder?value=${encodeURIComponent(currentSchedule || '')}&return=${encodeURIComponent(returnUrl)}`
+                                    );
+                                  }}
                                 >
-                                  {preset.label}
+                                  <Info className="h-3 w-3 mr-1" />
+                                  Build Expression
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-xs">{preset.description}</p>
+                              <TooltipContent side="left">
+                                <p className="text-xs">Open cron expression builder</p>
                               </TooltipContent>
                             </Tooltip>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </FadeIn>
-
-            {/* Advanced Configuration Section */}
-            <FadeIn delay={0.2}>
-              <Card className="border rounded-lg">
-                <button
-                  type="button"
-                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-accent/50 transition-colors rounded-t-lg"
-                  onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-                >
-                  <div className="flex items-center gap-2 text-lg font-semibold">
-                    <Settings2 className="h-4 w-4 text-primary" />
-                    Advanced
-                  </div>
-                  <ChevronDown
-                    className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
-                      isAdvancedOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                {isAdvancedOpen && (
-                  <CardContent className="px-6 pb-6">
-                    <div className="space-y-4 pt-2">
-                      {/* HTTP Method & Content Type */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* HTTP Method */}
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium">
-                            HTTP Method <span className="text-destructive">*</span>
-                          </Label>
-                          <ToggleGroup
-                            type="single"
-                            value={httpMethod}
-                            onValueChange={(value) => {
-                              if (value) setValue('httpMethod', value as HttpMethod);
-                            }}
-                            className="justify-start gap-2"
-                          >
-                            {HTTP_METHODS.map((method) => (
-                              <ToggleGroupItem
-                                key={method.value}
-                                value={method.value}
-                                className="px-4 h-9 font-mono text-sm border border-input data-[state=on]:bg-foreground data-[state=on]:text-background data-[state=on]:border-foreground"
-                              >
-                                {method.label}
-                              </ToggleGroupItem>
-                            ))}
-                          </ToggleGroup>
-                        </div>
-
-                        {/* Content Type */}
-                        <div className="space-y-1.5">
-                          <Label htmlFor="contentType" className="text-xs font-medium">
-                            Content Type <span className="text-destructive">*</span>
-                          </Label>
-                          <Select
-                            value={watch('contentType')}
-                            onValueChange={(value) => setValue('contentType', value)}
-                          >
-                            <SelectTrigger id="contentType" className="h-9">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="application/json" className="text-sm">
-                                application/json
-                              </SelectItem>
-                              <SelectItem
-                                value="application/x-www-form-urlencoded"
-                                className="text-sm"
-                              >
-                                application/x-www-form-urlencoded
-                              </SelectItem>
-                              <SelectItem value="text/plain" className="text-sm">
-                                text/plain
-                              </SelectItem>
-                              <SelectItem value="application/xml" className="text-sm">
-                                application/xml
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      {/* Headers */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Label className="text-xs font-medium">Headers</Label>
-                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal">
-                              Optional
-                            </Badge>
                           </div>
-                          <Button
-                            type="button"
-                            onClick={addHeader}
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs"
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add
-                          </Button>
+
+                          {/* Schedule Input and Timezone in a row */}
+                          <div className="grid grid-cols-1 md:grid-cols-[1fr,200px] gap-2">
+                            <div className="space-y-1.5">
+                              <Input
+                                id="schedule"
+                                {...register('schedule')}
+                                placeholder="0 9 * * *"
+                                className="font-mono h-9 text-sm"
+                              />
+                              {errors.schedule && (
+                                <p className="text-xs text-destructive flex items-center gap-1">
+                                  <AlertCircle className="h-3 w-3" />
+                                  {errors.schedule.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <Select
+                                value={watch('timezone')}
+                                onValueChange={(value) => setValue('timezone', value)}
+                              >
+                                <SelectTrigger id="timezone" className="h-9 text-left">
+                                  <Globe className="h-3.5 w-3.5 mr-1.5" />
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {TIMEZONES.map((tz) => (
+                                    <SelectItem key={tz.value} value={tz.value} className="text-sm">
+                                      {tz.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Cron Presets */}
+                          <div className="space-y-1.5">
+                            <p className="text-xs text-muted-foreground">Quick presets:</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {CRON_PRESETS.map((preset) => (
+                                <Tooltip key={preset.value}>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant={
+                                        selectedPreset === preset.value ? 'default' : 'outline'
+                                      }
+                                      size="sm"
+                                      onClick={() => applyPreset(preset.value)}
+                                      className="h-7 text-xs px-2.5"
+                                    >
+                                      {preset.label}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="text-xs">{preset.description}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                        {headers.length === 0 ? (
-                          <div className="border border-dashed rounded-md p-3 bg-muted/10">
-                            <p className="text-xs text-muted-foreground text-center">
-                              No headers added yet. Click "Add" to include custom headers.
+                      </div>
+                    </CardContent>
+                  </Card>
+                </FadeIn>
+
+                {/* Advanced Configuration Section */}
+                <FadeIn delay={0.2}>
+                  <Card className="border rounded-lg">
+                    <button
+                      type="button"
+                      className="w-full px-6 py-4 flex items-center justify-between hover:bg-accent/50 transition-colors rounded-t-lg"
+                      onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                    >
+                      <div className="flex items-center gap-2 text-lg font-semibold">
+                        <Settings2 className="h-4 w-4 text-primary" />
+                        Advanced
+                      </div>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
+                          isAdvancedOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                    {isAdvancedOpen && (
+                      <CardContent className="px-6 pb-6">
+                        <div className="space-y-4 pt-2">
+                          {/* HTTP Method & Content Type */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* HTTP Method */}
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-medium">
+                                HTTP Method <span className="text-destructive">*</span>
+                              </Label>
+                              <ToggleGroup
+                                type="single"
+                                value={httpMethod}
+                                onValueChange={(value) => {
+                                  if (value) setValue('httpMethod', value as HttpMethod);
+                                }}
+                                className="justify-start gap-2"
+                              >
+                                {HTTP_METHODS.map((method) => (
+                                  <ToggleGroupItem
+                                    key={method.value}
+                                    value={method.value}
+                                    className="px-4 h-9 font-mono text-sm border border-input data-[state=on]:bg-foreground data-[state=on]:text-background data-[state=on]:border-foreground"
+                                  >
+                                    {method.label}
+                                  </ToggleGroupItem>
+                                ))}
+                              </ToggleGroup>
+                            </div>
+
+                            {/* Content Type */}
+                            <div className="space-y-1.5">
+                              <Label htmlFor="contentType" className="text-xs font-medium">
+                                Content Type <span className="text-destructive">*</span>
+                              </Label>
+                              <Select
+                                value={watch('contentType')}
+                                onValueChange={(value) => setValue('contentType', value)}
+                              >
+                                <SelectTrigger id="contentType" className="h-9">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="application/json" className="text-sm">
+                                    application/json
+                                  </SelectItem>
+                                  <SelectItem
+                                    value="application/x-www-form-urlencoded"
+                                    className="text-sm"
+                                  >
+                                    application/x-www-form-urlencoded
+                                  </SelectItem>
+                                  <SelectItem value="text/plain" className="text-sm">
+                                    text/plain
+                                  </SelectItem>
+                                  <SelectItem value="application/xml" className="text-sm">
+                                    application/xml
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Headers */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs font-medium">Headers</Label>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-4 px-1.5 font-normal"
+                                >
+                                  Optional
+                                </Badge>
+                              </div>
+                              <Button
+                                type="button"
+                                onClick={addHeader}
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add
+                              </Button>
+                            </div>
+                            {headers.length === 0 ? (
+                              <div className="border border-dashed rounded-md p-3 bg-muted/10">
+                                <p className="text-xs text-muted-foreground text-center">
+                                  No headers added yet. Click "Add" to include custom headers.
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5 border rounded-md p-3 bg-muted/20">
+                                {headers.map((_, index) => (
+                                  <div key={index} className="flex gap-1.5">
+                                    <Button
+                                      type="button"
+                                      onClick={() => removeHeader(index)}
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 text-destructive hover:text-destructive"
+                                    >
+                                      <CircleMinus className="h-4 w-4" />
+                                    </Button>
+                                    <Input
+                                      {...register(`headers.${index}.key`)}
+                                      placeholder="Key (e.g., Authorization)"
+                                      className="flex-1 h-8 text-sm"
+                                    />
+                                    <Input
+                                      {...register(`headers.${index}.value`)}
+                                      placeholder="Value (e.g., Bearer token123)"
+                                      className="flex-1 h-8 text-sm"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Query Parameters */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs font-medium">Query Parameters</Label>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-4 px-1.5 font-normal"
+                                >
+                                  Optional
+                                </Badge>
+                              </div>
+                              <Button
+                                type="button"
+                                onClick={addQueryParam}
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add
+                              </Button>
+                            </div>
+                            {queryParams.length === 0 ? (
+                              <div className="border border-dashed rounded-md p-3 bg-muted/10">
+                                <p className="text-xs text-muted-foreground text-center">
+                                  No query parameters added yet. Click "Add" to include URL
+                                  parameters.
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5 border rounded-md p-3 bg-muted/20">
+                                {queryParams.map((_, index) => (
+                                  <div key={index} className="flex gap-1.5">
+                                    <Button
+                                      type="button"
+                                      onClick={() => removeQueryParam(index)}
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 text-destructive hover:text-destructive"
+                                    >
+                                      <CircleMinus className="h-4 w-4" />
+                                    </Button>
+                                    <Input
+                                      {...register(`queryParams.${index}.key`)}
+                                      placeholder="Key (e.g., api_key)"
+                                      className="flex-1 h-8 text-sm"
+                                    />
+                                    <Input
+                                      {...register(`queryParams.${index}.value`)}
+                                      placeholder="Value (e.g., 12345)"
+                                      className="flex-1 h-8 text-sm"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Body Template */}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor="bodyTemplate" className="text-xs font-medium">
+                                Request Body Template
+                              </Label>
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] h-4 px-1.5 font-normal"
+                              >
+                                Optional
+                              </Badge>
+                            </div>
+                            <Textarea
+                              id="bodyTemplate"
+                              {...register('bodyTemplate')}
+                              placeholder='{"event": "scheduled", "timestamp": "{{timestamp}}"}'
+                              className="font-mono min-h-[100px] text-sm"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Use template variables like {`{{timestamp}}`} or {`{{data}}`} for
+                              dynamic content
                             </p>
                           </div>
-                        ) : (
-                          <div className="space-y-1.5 border rounded-md p-3 bg-muted/20">
-                            {headers.map((_, index) => (
-                              <div key={index} className="flex gap-1.5">
-                                <Button
-                                  type="button"
-                                  onClick={() => removeHeader(index)}
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-8 w-8 text-destructive hover:text-destructive"
-                                >
-                                  <CircleMinus className="h-4 w-4" />
-                                </Button>
-                                <Input
-                                  {...register(`headers.${index}.key`)}
-                                  placeholder="Key (e.g., Authorization)"
-                                  className="flex-1 h-8 text-sm"
-                                />
-                                <Input
-                                  {...register(`headers.${index}.value`)}
-                                  placeholder="Value (e.g., Bearer token123)"
-                                  className="flex-1 h-8 text-sm"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Query Parameters */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Label className="text-xs font-medium">Query Parameters</Label>
-                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal">
-                              Optional
-                            </Badge>
-                          </div>
-                          <Button
-                            type="button"
-                            onClick={addQueryParam}
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs"
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add
-                          </Button>
                         </div>
-                        {queryParams.length === 0 ? (
-                          <div className="border border-dashed rounded-md p-3 bg-muted/10">
-                            <p className="text-xs text-muted-foreground text-center">
-                              No query parameters added yet. Click "Add" to include URL parameters.
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="space-y-1.5 border rounded-md p-3 bg-muted/20">
-                            {queryParams.map((_, index) => (
-                              <div key={index} className="flex gap-1.5">
-                                <Button
-                                  type="button"
-                                  onClick={() => removeQueryParam(index)}
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-8 w-8 text-destructive hover:text-destructive"
-                                >
-                                  <CircleMinus className="h-4 w-4" />
-                                </Button>
-                                <Input
-                                  {...register(`queryParams.${index}.key`)}
-                                  placeholder="Key (e.g., api_key)"
-                                  className="flex-1 h-8 text-sm"
-                                />
-                                <Input
-                                  {...register(`queryParams.${index}.value`)}
-                                  placeholder="Value (e.g., 12345)"
-                                  className="flex-1 h-8 text-sm"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      </CardContent>
+                    )}
+                  </Card>
+                </FadeIn>
 
-                      {/* Body Template */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor="bodyTemplate" className="text-xs font-medium">
-                            Request Body Template
-                          </Label>
-                          <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal">
-                            Optional
-                          </Badge>
-                        </div>
-                        <Textarea
-                          id="bodyTemplate"
-                          {...register('bodyTemplate')}
-                          placeholder='{"event": "scheduled", "timestamp": "{{timestamp}}"}'
-                          className="font-mono min-h-[100px] text-sm"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Use template variables like {`{{timestamp}}`} or {`{{data}}`} for dynamic
-                          content
+                {/* Submit Button */}
+                <FadeIn delay={0.3}>
+                  <div className="flex gap-3 justify-end pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => navigate('/dashboard')}
+                      disabled={isSubmitting}
+                      className="h-9"
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting} className="h-9">
+                      {isSubmitting ? (
+                        <>
+                          <div className="h-3.5 w-3.5 border-2 border-background border-t-transparent rounded-full animate-spin mr-2" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>Create</>
+                      )}
+                    </Button>
+                  </div>
+                </FadeIn>
+              </form>
+            </div>
+
+            {/* Right Column - Documentation (Sticky) */}
+            <div className="lg:col-span-1">
+              <FadeIn delay={0.4}>
+                <Card className="border sticky top-6">
+                  <CardContent className="p-6">
+                    <h4 className="text-sm font-semibold mb-3">Cron Expression Format</h4>
+                    <div className="space-y-3 text-sm text-muted-foreground">
+                      <p>
+                        A cron expression consists of 6 fields separated by spaces:
+                        <code className="ml-2 px-2 py-1 bg-muted rounded font-mono text-foreground block mt-1">
+                          second minute hour day month weekday
+                        </code>
+                      </p>
+                      <div className="space-y-2 mt-4">
+                        <p>
+                          <strong className="text-foreground">Special characters:</strong>
                         </p>
+                        <ul className="list-disc list-inside space-y-1 ml-2">
+                          <li>
+                            <code className="px-1.5 py-0.5 bg-muted rounded font-mono text-foreground">
+                              *
+                            </code>{' '}
+                            - Any value
+                          </li>
+                          <li>
+                            <code className="px-1.5 py-0.5 bg-muted rounded font-mono text-foreground">
+                              ,
+                            </code>{' '}
+                            - Value list separator (e.g., 1,3,5)
+                          </li>
+                          <li>
+                            <code className="px-1.5 py-0.5 bg-muted rounded font-mono text-foreground">
+                              -
+                            </code>{' '}
+                            - Range of values (e.g., 1-5)
+                          </li>
+                          <li>
+                            <code className="px-1.5 py-0.5 bg-muted rounded font-mono text-foreground">
+                              /
+                            </code>{' '}
+                            - Step values (e.g., */5 means every 5)
+                          </li>
+                        </ul>
+                      </div>
+                      <div className="space-y-2 mt-4">
+                        <p>
+                          <strong className="text-foreground">Field ranges:</strong>
+                        </p>
+                        <ul className="list-disc list-inside space-y-1 ml-2">
+                          <li>Second: 0-59</li>
+                          <li>Minute: 0-59</li>
+                          <li>Hour: 0-23</li>
+                          <li>Day of month: 1-31</li>
+                          <li>Month: 1-12</li>
+                          <li>Day of week: 0-7 (0 and 7 are Sunday)</li>
+                        </ul>
                       </div>
                     </div>
                   </CardContent>
-                )}
-              </Card>
-            </FadeIn>
-
-            {/* Submit Button */}
-            <FadeIn delay={0.3}>
-              <div className="flex gap-3 justify-end pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/dashboard')}
-                  disabled={isSubmitting}
-                  className="h-9"
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting} className="h-9">
-                  {isSubmitting ? (
-                    <>
-                      <div className="h-3.5 w-3.5 border-2 border-background border-t-transparent rounded-full animate-spin mr-2" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>Create</>
-                  )}
-                </Button>
-              </div>
-            </FadeIn>
-          </form>
+                </Card>
+              </FadeIn>
+            </div>
+          </div>
         </div>
       </div>
     </TooltipProvider>

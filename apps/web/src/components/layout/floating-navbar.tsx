@@ -1,4 +1,4 @@
-import { Home, PlusCircle, Settings, LogOut, Moon, Sun, User } from 'lucide-react';
+import { Home, PlusCircle, Bell, LogOut, Moon, Sun, User, Sparkles } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { useState, useRef, useEffect } from 'react';
@@ -45,9 +45,14 @@ const FloatingNavbar = () => {
       path: '/add-new',
     },
     {
-      icon: Settings,
-      label: 'Settings',
-      path: '/settings',
+      icon: Sparkles,
+      label: 'Cron Builder',
+      path: '/cron-builder',
+    },
+    {
+      icon: Bell,
+      label: 'Notifications',
+      path: '/notifications',
     },
   ];
 
