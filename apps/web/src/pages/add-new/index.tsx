@@ -1,33 +1,624 @@
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { FadeIn } from '@/components/motion/fade-in';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  Plus,
+  CircleMinus,
+  Clock,
+  Globe,
+  Send,
+  Key,
+  Code,
+  CheckCircle,
+  AlertCircle,
+  Zap,
+  Calendar,
+  ExternalLink,
+  Info,
+} from 'lucide-react';
+import { useCreateWebhook } from '@/hooks/use-webhooks';
+import type { HttpMethod } from '@/types/webhook.types';
+import { useNavigate } from 'react-router-dom';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+// Validation schema
+const webhookSchema = z.object({
+  jobName: z.string().min(1, 'Job name is required').max(255, 'Job name is too long'),
+  schedule: z
+    .string()
+    .min(1, 'Schedule is required')
+    .regex(/^[\d\s\*\,\-\/]+$/, 'Invalid cron expression'),
+  timezone: z.string().min(1, 'Timezone is required'),
+  enabled: z.boolean(),
+  webhookUrl: z.string().url('Must be a valid URL'),
+  httpMethod: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
+  contentType: z.string().min(1, 'Content type is required'),
+  bodyTemplate: z.string().optional(),
+  headers: z.array(z.object({ key: z.string(), value: z.string() })),
+  queryParams: z.array(z.object({ key: z.string(), value: z.string() })),
+});
+
+type WebhookFormData = z.infer<typeof webhookSchema>;
+
+// Common cron presets
+const CRON_PRESETS = [
+  { label: 'Every minute', value: '* * * * *', description: 'Runs every minute' },
+  { label: 'Every 5 minutes', value: '*/5 * * * *', description: 'Runs every 5 minutes' },
+  { label: 'Every hour', value: '0 * * * *', description: 'Runs at minute 0 of every hour' },
+  { label: 'Every day at 9 AM', value: '0 9 * * *', description: 'Runs daily at 9:00 AM' },
+  {
+    label: 'Every Monday at 9 AM',
+    value: '0 9 * * 1',
+    description: 'Runs every Monday at 9:00 AM',
+  },
+  { label: 'First day of month', value: '0 0 1 * *', description: 'Runs at midnight on the 1st' },
+];
+
+// Common timezones
+const TIMEZONES = [
+  { label: 'UTC', value: 'UTC' },
+  { label: 'America/New_York (EST)', value: 'America/New_York' },
+  { label: 'America/Chicago (CST)', value: 'America/Chicago' },
+  { label: 'America/Los_Angeles (PST)', value: 'America/Los_Angeles' },
+  { label: 'Europe/London', value: 'Europe/London' },
+  { label: 'Europe/Paris', value: 'Europe/Paris' },
+  { label: 'Asia/Tokyo', value: 'Asia/Tokyo' },
+  { label: 'Asia/Shanghai', value: 'Asia/Shanghai' },
+  { label: 'Australia/Sydney', value: 'Australia/Sydney' },
+];
+
+// HTTP methods with subtle styling
+const HTTP_METHODS: { value: HttpMethod; label: string }[] = [
+  { value: 'GET', label: 'GET' },
+  { value: 'POST', label: 'POST' },
+  { value: 'PUT', label: 'PUT' },
+  { value: 'PATCH', label: 'PATCH' },
+  { value: 'DELETE', label: 'DELETE' },
+];
 
 const AddNewPage = () => {
-  return (
-    <div className="min-h-screen bg-background p-8 pl-32">
-      <div className="container mx-auto space-y-8">
-        <FadeIn>
-          <h1 className="text-4xl font-bold">Add New</h1>
-        </FadeIn>
+  const navigate = useNavigate();
+  const createWebhook = useCreateWebhook();
+  const [selectedPreset, setSelectedPreset] = useState<string>('');
 
-        <FadeIn delay={0.2} className="max-w-2xl">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PlusCircle className="h-5 w-5" />
-                Create New Item
-              </CardTitle>
-              <CardDescription>Add a new event, task, or schedule</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                This is a placeholder for the Add New page. You can add your form or content here.
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<WebhookFormData>({
+    resolver: zodResolver(webhookSchema),
+    defaultValues: {
+      timezone: 'UTC',
+      enabled: true,
+      httpMethod: 'POST',
+      contentType: 'application/json',
+      headers: [],
+      queryParams: [],
+    },
+  });
+
+  const headers = watch('headers');
+  const queryParams = watch('queryParams');
+  const schedule = watch('schedule');
+  const httpMethod = watch('httpMethod');
+  const enabled = watch('enabled');
+
+  const addHeader = () => {
+    setValue('headers', [...headers, { key: '', value: '' }]);
+  };
+
+  const removeHeader = (index: number) => {
+    setValue(
+      'headers',
+      headers.filter((_, i) => i !== index)
+    );
+  };
+
+  const addQueryParam = () => {
+    setValue('queryParams', [...queryParams, { key: '', value: '' }]);
+  };
+
+  const removeQueryParam = (index: number) => {
+    setValue(
+      'queryParams',
+      queryParams.filter((_, i) => i !== index)
+    );
+  };
+
+  const applyPreset = (preset: string) => {
+    setValue('schedule', preset);
+    setSelectedPreset(preset);
+  };
+
+  const onSubmit = async (data: WebhookFormData) => {
+    try {
+      // Convert headers and query params to objects
+      const headersObj = data.headers.reduce(
+        (acc, { key, value }) => {
+          if (key.trim()) acc[key] = value;
+          return acc;
+        },
+        {} as Record<string, string>
+      );
+
+      const queryParamsObj = data.queryParams.reduce(
+        (acc, { key, value }) => {
+          if (key.trim()) acc[key] = value;
+          return acc;
+        },
+        {} as Record<string, string>
+      );
+
+      await createWebhook.mutateAsync({
+        job: {
+          name: data.jobName,
+          schedule: data.schedule,
+          type: 1, // Default job type
+          timezone: data.timezone,
+          enabled: data.enabled,
+        },
+        webhook: {
+          url: data.webhookUrl,
+          method: data.httpMethod,
+          headers: Object.keys(headersObj).length > 0 ? headersObj : undefined,
+          query_params: Object.keys(queryParamsObj).length > 0 ? queryParamsObj : undefined,
+          body_template: data.bodyTemplate || undefined,
+          content_type: data.contentType,
+        },
+      });
+
+      // Redirect to dashboard after success
+      setTimeout(() => navigate('/dashboard'), 1500);
+    } catch (error) {
+      console.error('Failed to create webhook:', error);
+    }
+  };
+
+  return (
+    <TooltipProvider>
+      <div className="min-h-screen bg-background p-6 pl-24">
+        <div className="container mx-auto space-y-6 max-w-4xl">
+          <FadeIn>
+            <div className="space-y-1.5">
+              <h1 className="text-3xl font-bold flex items-center gap-2.5">
+                <Zap className="h-7 w-7 text-primary" />
+                Create Scheduled Webhook
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Schedule automated webhook calls to run on your custom schedule
               </p>
-            </CardContent>
-          </Card>
-        </FadeIn>
+            </div>
+          </FadeIn>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            {/* Combined Configuration Card */}
+            <FadeIn delay={0.1}>
+              <Card>
+                {/* Job Configuration Section */}
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Clock className="h-4 w-4 text-primary" />
+                    Job Configuration
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Configure when and how your webhook should run
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 pb-6">
+                  {/* Job Name */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="jobName" className="text-xs font-medium">
+                      Name <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="jobName"
+                      {...register('jobName')}
+                      placeholder="e.g., Daily Report Generator"
+                      className="h-9"
+                    />
+                    {errors.jobName && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.jobName.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Schedule */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="schedule" className="text-xs font-medium">
+                        Schedule (Cron Expression) <span className="text-destructive">*</span>
+                      </Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-muted-foreground hover:text-primary"
+                            onClick={() => window.open('https://crontab.guru', '_blank')}
+                          >
+                            <Info className="h-3 w-3 mr-1" />
+                            Need help?
+                            <ExternalLink className="h-2.5 w-2.5 ml-1" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <p className="text-xs">Opens crontab.guru in a new tab</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <Input
+                      id="schedule"
+                      {...register('schedule')}
+                      placeholder="0 9 * * *"
+                      className="font-mono h-9 text-sm"
+                    />
+                    {errors.schedule && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.schedule.message}
+                      </p>
+                    )}
+
+                    {/* Cron Presets */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Quick presets:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {CRON_PRESETS.map((preset) => (
+                          <Tooltip key={preset.value}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant={selectedPreset === preset.value ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => applyPreset(preset.value)}
+                                className="h-7 text-xs px-2.5"
+                              >
+                                {preset.label}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">{preset.description}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Timezone & Enabled */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="timezone"
+                        className="text-xs font-medium flex items-center gap-1.5"
+                      >
+                        <Globe className="h-3.5 w-3.5" />
+                        Timezone <span className="text-destructive">*</span>
+                      </Label>
+                      <Select
+                        value={watch('timezone')}
+                        onValueChange={(value) => setValue('timezone', value)}
+                      >
+                        <SelectTrigger id="timezone" className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIMEZONES.map((tz) => (
+                            <SelectItem key={tz.value} value={tz.value} className="text-sm">
+                              {tz.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="enabled" className="text-xs font-medium">
+                        Status
+                      </Label>
+                      <div className="flex items-center space-x-2.5 pt-1">
+                        <Switch
+                          id="enabled"
+                          checked={enabled}
+                          onCheckedChange={(checked) => setValue('enabled', checked)}
+                        />
+                        <Label htmlFor="enabled" className="cursor-pointer text-xs">
+                          {enabled ? (
+                            <Badge variant="default" className="text-xs font-normal">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Enabled
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs font-normal">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              Disabled
+                            </Badge>
+                          )}
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+
+                {/* Separator */}
+                <div className="border-t border-border/40 mx-6" />
+
+                {/* Webhook Configuration Section */}
+                <div className="pt-6">
+                  <CardHeader className="pb-4 pt-0">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Send className="h-4 w-4 text-primary" />
+                      Webhook Configuration
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Configure the HTTP request details
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* URL */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="webhookUrl" className="text-xs font-medium">
+                        Webhook URL <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="webhookUrl"
+                        {...register('webhookUrl')}
+                        placeholder="https://api.example.com/webhook"
+                        type="url"
+                        className="h-9 font-mono text-sm"
+                      />
+                      {errors.webhookUrl && (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.webhookUrl.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* HTTP Method & Content Type */}
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium">
+                          HTTP Method <span className="text-destructive">*</span>
+                        </Label>
+                        <ToggleGroup
+                          type="single"
+                          value={httpMethod}
+                          onValueChange={(value) => {
+                            if (value) setValue('httpMethod', value as HttpMethod);
+                          }}
+                          className="justify-start gap-2"
+                        >
+                          {HTTP_METHODS.map((method) => (
+                            <ToggleGroupItem
+                              key={method.value}
+                              value={method.value}
+                              className="px-4 h-9 font-mono text-sm border border-input data-[state=on]:bg-foreground data-[state=on]:text-background data-[state=on]:border-foreground"
+                            >
+                              {method.label}
+                            </ToggleGroupItem>
+                          ))}
+                        </ToggleGroup>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="contentType" className="text-xs font-medium">
+                          Content Type <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                          value={watch('contentType')}
+                          onValueChange={(value) => setValue('contentType', value)}
+                        >
+                          <SelectTrigger id="contentType" className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="application/json" className="text-sm">
+                              application/json
+                            </SelectItem>
+                            <SelectItem
+                              value="application/x-www-form-urlencoded"
+                              className="text-sm"
+                            >
+                              application/x-www-form-urlencoded
+                            </SelectItem>
+                            <SelectItem value="text/plain" className="text-sm">
+                              text/plain
+                            </SelectItem>
+                            <SelectItem value="application/xml" className="text-sm">
+                              application/xml
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Headers */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-medium flex items-center gap-1.5">
+                          <Key className="h-3.5 w-3.5" />
+                          Headers
+                          <span className="text-xs text-muted-foreground font-normal">
+                            (Optional)
+                          </span>
+                        </Label>
+                        <Button
+                          type="button"
+                          onClick={addHeader}
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                      {headers.length === 0 ? (
+                        <div className="border border-dashed rounded-md p-3 bg-muted/10">
+                          <p className="text-xs text-muted-foreground text-center">
+                            No headers added yet. Click "Add" to include custom headers.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 border rounded-md p-3 bg-muted/20">
+                          {headers.map((_, index) => (
+                            <div key={index} className="flex gap-1.5">
+                              <Button
+                                type="button"
+                                onClick={() => removeHeader(index)}
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                              >
+                                <CircleMinus className="h-4 w-4" />
+                              </Button>
+                              <Input
+                                {...register(`headers.${index}.key`)}
+                                placeholder="Key (e.g., Authorization)"
+                                className="flex-1 h-8 text-sm"
+                              />
+                              <Input
+                                {...register(`headers.${index}.value`)}
+                                placeholder="Value (e.g., Bearer token123)"
+                                className="flex-1 h-8 text-sm"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Query Parameters */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-medium flex items-center gap-1.5">
+                          <Code className="h-3.5 w-3.5" />
+                          Query Parameters
+                          <span className="text-xs text-muted-foreground font-normal">
+                            (Optional)
+                          </span>
+                        </Label>
+                        <Button
+                          type="button"
+                          onClick={addQueryParam}
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                      {queryParams.length === 0 ? (
+                        <div className="border border-dashed rounded-md p-3 bg-muted/10">
+                          <p className="text-xs text-muted-foreground text-center">
+                            No query parameters added yet. Click "Add" to include URL parameters.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 border rounded-md p-3 bg-muted/20">
+                          {queryParams.map((_, index) => (
+                            <div key={index} className="flex gap-1.5">
+                              <Button
+                                type="button"
+                                onClick={() => removeQueryParam(index)}
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                              >
+                                <CircleMinus className="h-4 w-4" />
+                              </Button>
+                              <Input
+                                {...register(`queryParams.${index}.key`)}
+                                placeholder="Key (e.g., api_key)"
+                                className="flex-1 h-8 text-sm"
+                              />
+                              <Input
+                                {...register(`queryParams.${index}.value`)}
+                                placeholder="Value (e.g., 12345)"
+                                className="flex-1 h-8 text-sm"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Body Template */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="bodyTemplate" className="text-xs font-medium">
+                        Request Body Template
+                        <span className="text-xs text-muted-foreground font-normal ml-1.5">
+                          (Optional)
+                        </span>
+                      </Label>
+                      <Textarea
+                        id="bodyTemplate"
+                        {...register('bodyTemplate')}
+                        placeholder='{"event": "scheduled", "timestamp": "{{timestamp}}"}'
+                        className="font-mono min-h-[100px] text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use template variables like {`{{timestamp}}`} or {`{{data}}`} for dynamic
+                        content
+                      </p>
+                    </div>
+                  </CardContent>
+                </div>
+              </Card>
+            </FadeIn>
+
+            {/* Submit Button */}
+            <FadeIn delay={0.2}>
+              <div className="flex gap-3 justify-end pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate('/dashboard')}
+                  disabled={isSubmitting}
+                  className="h-9"
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting} className="h-9">
+                  {isSubmitting ? (
+                    <>
+                      <div className="h-3.5 w-3.5 border-2 border-background border-t-transparent rounded-full animate-spin mr-2" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>Create</>
+                  )}
+                </Button>
+              </div>
+            </FadeIn>
+          </form>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 };
 

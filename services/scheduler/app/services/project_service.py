@@ -170,6 +170,26 @@ class ProjectService:
         """
         return self.db.query(Project).filter(Project.user_id == user_id).count()
 
+    def get_or_create_project_by_name(self, user_id: str, project_name: str) -> Project:
+        """
+        Get an existing project by name or create it if it doesn't exist.
+
+        Args:
+            user_id: ID of the user
+            project_name: Name of the project to find or create
+
+        Returns:
+            Project instance (either existing or newly created)
+        """
+        # Try to find existing project
+        project = self.db.query(Project).filter(Project.user_id == user_id, Project.name == project_name).first()
+
+        # If not found, create new project
+        if not project:
+            project = self.create_project(user_id, project_name)
+
+        return project
+
 
 def get_project_service(db: Session) -> ProjectService:
     """

@@ -340,6 +340,106 @@ class TestProjectServiceCount:
 
 
 @pytest.mark.unit
+class TestProjectServiceGetOrCreate:
+    """Tests for get_or_create_project_by_name method."""
+
+    def test_get_or_create_project_creates_new(self, db_session: Session, test_user):
+        """Test creating a new project when it doesn't exist."""
+        service = ProjectService(db_session)
+
+        project = service.get_or_create_project_by_name(test_user.id, "New Project")
+
+        assert project is not None
+        assert project.user_id == test_user.id
+        assert project.name == "New Project"
+        assert project.id is not None
+        assert project.created_at is not None
+
+    def test_get_or_create_project_returns_existing(self, db_session: Session, test_user):
+        """Test returning existing project when it already exists."""
+        # Create a project first
+        existing_project = ProjectFactory.create(db_session, test_user.id, "Existing Project")
+        existing_id = existing_project.id
+
+        service = ProjectService(db_session)
+        project = service.get_or_create_project_by_name(test_user.id, "Existing Project")
+
+        # Should return the same project
+        assert project.id == existing_id
+        assert project.name == "Existing Project"
+        assert project.user_id == test_user.id
+
+    def test_get_or_create_project_multiple_calls_same_result(self, db_session: Session, test_user):
+        """Test that multiple calls with same parameters return the same project."""
+        service = ProjectService(db_session)
+
+        project1 = service.get_or_create_project_by_name(test_user.id, "Test Project")
+        project2 = service.get_or_create_project_by_name(test_user.id, "Test Project")
+
+        # Should be the same project
+        assert project1.id == project2.id
+        assert project1.name == project2.name
+
+    def test_get_or_create_project_different_users_different_projects(
+        self, db_session: Session, test_user, another_user
+    ):
+        """Test that same project name for different users creates separate projects."""
+        service = ProjectService(db_session)
+
+        project1 = service.get_or_create_project_by_name(test_user.id, "Shared Name")
+        project2 = service.get_or_create_project_by_name(another_user.id, "Shared Name")
+
+        # Should be different projects
+        assert project1.id != project2.id
+        assert project1.user_id == test_user.id
+        assert project2.user_id == another_user.id
+        assert project1.name == project2.name == "Shared Name"
+
+    def test_get_or_create_project_case_sensitive(self, db_session: Session, test_user):
+        """Test that project names are case-sensitive."""
+        service = ProjectService(db_session)
+
+        project1 = service.get_or_create_project_by_name(test_user.id, "MyProject")
+        project2 = service.get_or_create_project_by_name(test_user.id, "myproject")
+
+        # Should be different projects (case-sensitive)
+        assert project1.id != project2.id
+        assert project1.name == "MyProject"
+        assert project2.name == "myproject"
+
+    def test_get_or_create_project_with_special_characters(self, db_session: Session, test_user):
+        """Test creating/getting project with special characters in name."""
+        service = ProjectService(db_session)
+
+        project_name = "Project-2024 (Test) #1"
+        project = service.get_or_create_project_by_name(test_user.id, project_name)
+
+        assert project.name == project_name
+        assert project.user_id == test_user.id
+
+        # Verify it's idempotent
+        project2 = service.get_or_create_project_by_name(test_user.id, project_name)
+        assert project.id == project2.id
+
+    def test_get_or_create_project_doesnt_create_duplicates(self, db_session: Session, test_user):
+        """Test that multiple parallel-like calls don't create duplicates."""
+        service = ProjectService(db_session)
+
+        # Create project first time
+        project1 = service.get_or_create_project_by_name(test_user.id, "Unique Project")
+
+        # Get it multiple times
+        for _ in range(5):
+            project = service.get_or_create_project_by_name(test_user.id, "Unique Project")
+            assert project.id == project1.id
+
+        # Verify only one project was created
+        all_projects = service.get_projects(test_user.id)
+        matching_projects = [p for p in all_projects if p.name == "Unique Project"]
+        assert len(matching_projects) == 1
+
+
+@pytest.mark.unit
 class TestProjectServiceFactory:
     """Tests for the service factory function."""
 

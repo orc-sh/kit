@@ -1,13 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { User } from '@/types';
 
-interface User {
-  id: string;
-  email: string;
-  user_metadata: Record<string, any>;
-}
-
-interface AuthState {
+interface AuthStoreState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
@@ -20,7 +15,7 @@ interface AuthState {
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
+export const useAuthStore = create<AuthStoreState>()(
   persist(
     (set) => ({
       user: null,

@@ -1,22 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api, { clearTokens } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
-
-interface User {
-  id: string;
-  email: string;
-  user_metadata: Record<string, any>;
-}
-
-interface OAuthUrlResponse {
-  url: string;
-}
-
-interface OAuthCallbackResponse {
-  access_token: string;
-  refresh_token: string;
-  user: User;
-}
+import type { User, OAuthUrlResponse, OAuthCallbackResponse } from '@/types';
 
 /**
  * Hook to fetch current user
