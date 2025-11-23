@@ -32,6 +32,12 @@ import {
   Calendar,
   ExternalLink,
   Info,
+  FileText,
+  Link2,
+  Network,
+  FileType,
+  Braces,
+  Power,
 } from 'lucide-react';
 import { useCreateWebhook } from '@/hooks/use-webhooks';
 import type { HttpMethod } from '@/types/webhook.types';
@@ -310,11 +316,7 @@ const AddNewPage = () => {
                   {/* Timezone & Enabled */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label
-                        htmlFor="timezone"
-                        className="text-xs font-medium flex items-center gap-1.5"
-                      >
-                        <Globe className="h-3.5 w-3.5" />
+                      <Label htmlFor="timezone" className="text-xs font-medium">
                         Timezone <span className="text-destructive">*</span>
                       </Label>
                       <Select
@@ -458,10 +460,9 @@ const AddNewPage = () => {
                     {/* Headers */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs font-medium flex items-center gap-1.5">
-                          <Key className="h-3.5 w-3.5" />
+                        <Label className="text-xs font-medium">
                           Headers
-                          <span className="text-xs text-muted-foreground font-normal">
+                          <span className="text-xs text-muted-foreground font-normal ml-1.5">
                             (Optional)
                           </span>
                         </Label>
@@ -514,10 +515,9 @@ const AddNewPage = () => {
                     {/* Query Parameters */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs font-medium flex items-center gap-1.5">
-                          <Code className="h-3.5 w-3.5" />
+                        <Label className="text-xs font-medium">
                           Query Parameters
-                          <span className="text-xs text-muted-foreground font-normal">
+                          <span className="text-xs text-muted-foreground font-normal ml-1.5">
                             (Optional)
                           </span>
                         </Label>

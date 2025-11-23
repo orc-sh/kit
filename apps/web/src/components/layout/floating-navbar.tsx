@@ -1,5 +1,6 @@
-import { Home, PlusCircle, Settings, LogOut } from 'lucide-react';
+import { Home, PlusCircle, Settings, LogOut, Moon, Sun } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTheme } from 'next-themes';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuthStore } from '@/stores/auth-store';
 import { useLogout } from '@/hooks/use-auth';
@@ -9,6 +10,7 @@ const FloatingNavbar = () => {
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const { mutate: logout } = useLogout();
+  const { theme, setTheme } = useTheme();
 
   const navItems = [
     {
@@ -95,6 +97,27 @@ const FloatingNavbar = () => {
                   className="bg-black text-white border-black px-2 py-1 text-xs font-medium"
                 >
                   Profile
+                </TooltipContent>
+              </Tooltip>
+            </li>
+
+            {/* Theme Toggle */}
+            <li>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    className="flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 hover:bg-primary/10 hover:scale-110 bg-transparent text-muted-foreground hover:text-primary"
+                    aria-label="Toggle theme"
+                  >
+                    {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="right"
+                  className="bg-black text-white border-black px-2 py-1 text-xs font-medium"
+                >
+                  {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                 </TooltipContent>
               </Tooltip>
             </li>

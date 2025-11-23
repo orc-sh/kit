@@ -1,7 +1,9 @@
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { QueryProvider } from '@/providers/query-provider';
+import { ThemeProvider } from '@/providers/theme-provider';
 import { AppRouter } from '@/routers';
 import FloatingNavbar from '@/components/layout/floating-navbar';
+import { Toaster } from '@/components/ui/sonner';
 
 const AppContent = () => {
   const location = useLocation();
@@ -14,17 +16,20 @@ const AppContent = () => {
     <>
       {shouldShowNavbar && <FloatingNavbar />}
       <AppRouter />
+      <Toaster />
     </>
   );
 };
 
 function App() {
   return (
-    <QueryProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </QueryProvider>
+    <ThemeProvider>
+      <QueryProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </QueryProvider>
+    </ThemeProvider>
   );
 }
 
