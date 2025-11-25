@@ -9,6 +9,7 @@ import SchedulesPage from '@/pages/schedules';
 import AddNewPage from '@/pages/add-new';
 import EditWebhookPage from '@/pages/edit';
 import WebhookDetailsPage from '@/pages/webhook-details';
+import UrlDetailsPage from '@/pages/url-details';
 import NotificationsPage from '@/pages/notifications';
 import ProfilePage from '@/pages/profile';
 import NotFoundPage from '@/pages/not-found';
@@ -31,6 +32,7 @@ export const AppRouter = () => {
         <Route path="/schedules" element={<SchedulesPage />} />
         <Route path="/add-new" element={<AddNewPage />} />
         <Route path="/webhooks/:id" element={<WebhookDetailsPage />} />
+        <Route path="/urls/:id" element={<UrlDetailsPage />} />
         <Route path="/edit/:id" element={<EditWebhookPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
