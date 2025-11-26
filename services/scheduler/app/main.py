@@ -5,6 +5,7 @@ from app.celery import scheduler
 from app.controllers import (
     health_controller,
     load_test_controller,
+    notification_controller,
     project_controller,
     scheduler_controller,
     subscription_controller,
@@ -38,6 +39,7 @@ app.add_middleware(
 # Include each router with a specific prefix and tags for better organization
 app.include_router(health_controller.router, prefix="", tags=["Health"])
 app.include_router(project_controller.router, prefix="/api/projects", tags=["Projects"])
+app.include_router(notification_controller.router, prefix="/api/notifications", tags=["Notifications"])
 
 # Include scheduler controller FIRST (with specific routes like GET /api/schedules, POST /api/schedules, etc.)
 # This ensures scheduler CRUD operations are matched before the catch-all URL receiver
