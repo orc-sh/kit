@@ -3,6 +3,8 @@ URL receiver controller for handling incoming requests to URL endpoints.
 This endpoint is public and doesn't require authentication.
 """
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
@@ -10,6 +12,23 @@ from app.services.url_service import get_url_service
 from db.client import client
 
 router = APIRouter()
+
+# UUID pattern: 8-4-4-4-12 hex digits with dashes
+UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
+
+
+def is_uuid(identifier: str) -> bool:
+    """
+    Check if the identifier is a UUID format.
+    UUIDs are used for webhook IDs, while unique_identifiers are base64 tokens.
+
+    Args:
+        identifier: The identifier to check
+
+    Returns:
+        True if it looks like a UUID, False otherwise
+    """
+    return bool(UUID_PATTERN.match(identifier)) or len(identifier) == 36
 
 
 @router.post("/{unique_identifier}", status_code=status.HTTP_200_OK)
@@ -35,8 +54,16 @@ async def receive_request(
         Success response
 
     Raises:
-        HTTPException: 404 if URL not found
+        HTTPException: 404 if URL not found or if identifier is a UUID (webhook ID)
     """
+    # If this looks like a UUID (webhook ID), return 404 immediately
+    # so FastAPI can try the next route (webhook controller)
+    if is_uuid(unique_identifier):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"URL with identifier '{unique_identifier}' not found",
+        )
+
     url_service = get_url_service(db)
     url = url_service.get_url_by_identifier(unique_identifier)
 

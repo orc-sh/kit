@@ -7,7 +7,7 @@ import { FadeIn } from '@/components/motion/fade-in';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, ExternalLink, Copy, Check, Globe } from 'lucide-react';
+import { Plus, ExternalLink, Copy, Check, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 
@@ -192,28 +192,30 @@ const DashboardPage = () => {
               </div>
 
               {/* Pagination */}
-              {pagination && pagination.total_pages > 1 && (
+              {!isLoading && urls.length > 0 && (
                 <div className="mt-6 flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    Page {pagination.current_page} of {pagination.total_pages} •{' '}
-                    {pagination.total_entries} total
+                    Page {pagination?.current_page || currentPage} • {urls.length} item
+                    {urls.length !== 1 ? 's' : ''}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={!pagination.has_previous}
+                      disabled={currentPage === 1 || !pagination?.has_previous}
+                      className="h-8 w-8 p-0"
                     >
-                      Previous
+                      <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setCurrentPage((p) => p + 1)}
-                      disabled={!pagination.has_next}
+                      disabled={urls.length < pageSize || !pagination?.has_next}
+                      className="h-8 w-8 p-0"
                     >
-                      Next
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>

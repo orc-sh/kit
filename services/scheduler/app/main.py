@@ -4,10 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.controllers import (
     health_controller,
     project_controller,
+    scheduler_controller,
     subscription_controller,
     url_controller,
     url_receiver_controller,
-    webhook_controller,
 )
 from config.environment import get_frontend_url, init
 
@@ -34,12 +34,16 @@ app.add_middleware(
 app.include_router(health_controller.router, prefix="", tags=["Health"])
 app.include_router(project_controller.router, prefix="/api/projects", tags=["Projects"])
 
-# Include URL receiver endpoint BEFORE webhook controller to avoid route conflicts
-# This allows /api/webhooks/{unique_identifier} to be matched before /api/webhooks/{webhook_id}
-# (no auth required, public endpoint)
-app.include_router(url_receiver_controller.router, prefix="/api/webhooks", tags=["URL Receiver"])
+# Include scheduler controller FIRST (with specific routes like GET /api/schedules, POST /api/schedules, etc.)
+# This ensures scheduler CRUD operations are matched before the catch-all URL receiver
+app.include_router(scheduler_controller.router, prefix="/api/schedules", tags=["Schedules"])
 
-app.include_router(webhook_controller.router, prefix="/api/webhooks", tags=["Webhooks"])
+# Include URL receiver endpoint AFTER scheduler controller
+# This catches /api/webhooks/{unique_identifier} for base64 tokens (not UUIDs)
+# The URL receiver validates that the identifier is NOT a UUID before processing
+# (no auth required, public endpoint)
+# Note: URL receiver still uses /api/webhooks prefix to maintain backward compatibility
+app.include_router(url_receiver_controller.router, prefix="/api/webhooks", tags=["URL Receiver"])
 app.include_router(subscription_controller.router, prefix="/api/subscriptions", tags=["Subscriptions"])
 app.include_router(url_controller.router, prefix="/api/urls", tags=["URLs"])
 

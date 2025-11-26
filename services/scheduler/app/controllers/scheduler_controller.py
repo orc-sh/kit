@@ -1,5 +1,5 @@
 """
-Webhook controller for managing Cron webhook integrations.
+Scheduler controller for managing scheduled webhook integrations.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
