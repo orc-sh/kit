@@ -10,6 +10,9 @@ import AddNewPage from '@/pages/add-new';
 import EditWebhookPage from '@/pages/edit';
 import WebhookDetailsPage from '@/pages/webhook-details';
 import UrlDetailsPage from '@/pages/url-details';
+import LoadTestsPage from '@/pages/load-tests';
+import LoadTestDetailsPage from '@/pages/load-tests/[id]';
+import NewLoadTestPage from '@/pages/load-tests/new';
 import NotificationsPage from '@/pages/notifications';
 import ProfilePage from '@/pages/profile';
 import NotFoundPage from '@/pages/not-found';
@@ -33,6 +36,9 @@ export const AppRouter = () => {
         <Route path="/add-new" element={<AddNewPage />} />
         <Route path="/webhooks/:id" element={<WebhookDetailsPage />} />
         <Route path="/urls/:id" element={<UrlDetailsPage />} />
+        <Route path="/load-tests" element={<LoadTestsPage />} />
+        <Route path="/load-tests/new" element={<NewLoadTestPage />} />
+        <Route path="/load-tests/:id" element={<LoadTestDetailsPage />} />
         <Route path="/edit/:id" element={<EditWebhookPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/profile" element={<ProfilePage />} />

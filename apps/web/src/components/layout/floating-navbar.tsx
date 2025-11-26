@@ -1,4 +1,15 @@
-import { Home, Bell, LogOut, Moon, Sun, User, Calendar, Hammer, CalendarClock } from 'lucide-react';
+import {
+  Home,
+  Bell,
+  LogOut,
+  Moon,
+  Sun,
+  User,
+  Calendar,
+  Hammer,
+  CalendarClock,
+  Gauge,
+} from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { useState, useRef, useEffect } from 'react';
@@ -43,6 +54,11 @@ const FloatingNavbar = () => {
       icon: CalendarClock,
       label: 'Schedules',
       path: '/schedules',
+    },
+    {
+      icon: Gauge,
+      label: 'Benchmarks',
+      path: '/load-tests',
     },
     {
       icon: Hammer,

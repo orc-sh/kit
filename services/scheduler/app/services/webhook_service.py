@@ -24,7 +24,7 @@ class WebhookService:
 
     def create_webhook(
         self,
-        job_id: str,
+        job_id: Optional[str],
         url: str,
         method: str = "POST",
         headers: Optional[Dict[str, str]] = None,
@@ -33,10 +33,10 @@ class WebhookService:
         content_type: str = "application/json",
     ) -> Webhook:
         """
-        Create a new webhook for a job.
+        Create a new webhook.
 
         Args:
-            job_id: ID of the job this webhook belongs to
+            job_id: ID of the job this webhook belongs to (optional, None for load tests)
             url: URL to send the webhook to
             method: HTTP method (default: POST)
             headers: HTTP headers to include (optional)

@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.celery import scheduler
 from app.controllers import (
     health_controller,
+    load_test_controller,
     project_controller,
     scheduler_controller,
     subscription_controller,
@@ -13,6 +15,9 @@ from config.environment import get_frontend_url, init
 
 # Initialize environment variables FIRST before importing modules that need them
 init()
+
+# Configure Celery to autodiscover tasks
+scheduler.autodiscover_tasks(["app.tasks"], force=True)
 
 # Create the FastAPI application
 app = FastAPI(title="Scheduler API", version="1.0.0")
@@ -46,6 +51,7 @@ app.include_router(scheduler_controller.router, prefix="/api/schedules", tags=["
 app.include_router(url_receiver_controller.router, prefix="/api/webhooks", tags=["URL Receiver"])
 app.include_router(subscription_controller.router, prefix="/api/subscriptions", tags=["Subscriptions"])
 app.include_router(url_controller.router, prefix="/api/urls", tags=["URLs"])
+app.include_router(load_test_controller.router, prefix="/api/load-tests", tags=["Load Tests"])
 
 # Note: Authentication routes have been moved to the separate auth service
 # running on port 8001. The scheduler service still uses the auth middleware

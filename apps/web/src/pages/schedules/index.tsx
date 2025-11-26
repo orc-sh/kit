@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWebhooks, useUpdateWebhook } from '@/hooks/use-webhooks';
 import { FadeIn } from '@/components/motion/fade-in';
@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { describeCronExpression } from '@/lib/cron-utils';
+import { cn } from '@/lib/utils';
 import {
   Plus,
   Clock,
@@ -53,34 +55,6 @@ const SchedulesPage = () => {
       // Error is handled by the hook's onError
       console.error('Failed to toggle webhook status:', error);
     }
-  };
-
-  // Get HTTP method icon with white color
-  const getMethodIcon = (method: string) => {
-    const icons: Record<string, JSX.Element> = {
-      GET: <p className="text-white text-[10px] font-bold bg-blue-500 rounded-full">GET</p>,
-      POST: <p className="text-white text-[10px] font-bold bg-green-500 rounded-full">POST</p>,
-      PUT: <p className="text-white text-[10px] font-bold bg-amber-500 rounded-full">PUT</p>,
-      PATCH: <p className="text-white text-[10px] font-bold bg-orange-500 rounded-full">PATCH</p>,
-      DELETE: <p className="text-white text-[10px] font-bold bg-destructive rounded-full">DEL</p>,
-    };
-    return (
-      icons[method] || (
-        <p className="text-white text-[10px] font-bold bg-muted-foreground rounded-full">GET</p>
-      )
-    );
-  };
-
-  // Get HTTP method background color
-  const getMethodBgColor = (method: string): string => {
-    const colors: Record<string, string> = {
-      GET: 'bg-blue-500',
-      POST: 'bg-green-500',
-      PUT: 'bg-amber-500',
-      PATCH: 'bg-orange-500',
-      DELETE: 'bg-destructive',
-    };
-    return colors[method] || 'bg-muted-foreground';
   };
 
   // Empty state
@@ -136,7 +110,7 @@ const SchedulesPage = () => {
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background p-8 pl-32">
-        <div className="container mx-auto max-w-7xl">
+        <div className="container mx-auto max-w-6xl">
           <FadeIn>
             {/* Header */}
             <div className="mb-8 flex items-center justify-between">
@@ -179,42 +153,45 @@ const SchedulesPage = () => {
               </div>
             )}
 
-            {/* Webhooks Cards - Pill Structure */}
+            {/* Webhooks List */}
             {!isLoading && webhooks.length > 0 && (
-              <div className="space-y-3">
-                {webhooks.map((webhook) => (
-                  <Card
-                    key={webhook.id}
-                    className="group rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm cursor-pointer"
-                    onClick={() => navigate(`/webhooks/${webhook.id}`)}
-                  >
-                    <CardContent className="flex items-center justify-between gap-6 p-4">
-                      {/* HTTP Method Icon - At the start */}
-                      <div
-                        className={`flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg ${getMethodBgColor(webhook.method)}`}
-                      >
-                        {getMethodIcon(webhook.method)}
-                      </div>
-
-                      {/* Left Side - Information */}
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        {/* Name */}
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
+              <>
+                <div className="space-y-3">
+                  {webhooks.map((webhook) => (
+                    <Card
+                      key={webhook.id}
+                      className="group rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm cursor-pointer"
+                      onClick={() => navigate(`/webhooks/${webhook.id}`)}
+                    >
+                      <CardContent className="flex items-center justify-between gap-6 p-4">
+                        {/* Left Side - Information */}
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          <div
+                            className={cn(
+                              'flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg',
+                              webhook.job?.enabled ? 'bg-primary/10' : 'bg-muted/50'
+                            )}
+                          >
+                            <WebhookIcon
+                              className={cn(
+                                'h-5 w-5',
+                                webhook.job?.enabled ? 'text-primary' : 'text-muted-foreground'
+                              )}
+                            />
+                          </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 mb-1">
                               <h3 className="font-semibold text-sm text-foreground truncate">
                                 {webhook.job?.name || 'Unnamed Job'}
                               </h3>
-                              <span className="text-xs text-muted-foreground">
-                                {formatDistanceToNow(new Date(webhook.created_at), {
-                                  addSuffix: true,
-                                })}
-                              </span>
+                              <Badge variant="outline" className="font-mono text-xs">
+                                {webhook.method}
+                              </Badge>
                             </div>
-                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                               <div className="flex items-center gap-1.5 min-w-0">
                                 <Globe className="h-3 w-3 flex-shrink-0" />
-                                <code className="truncate font-mono">{webhook.url}</code>
+                                <code className="truncate font-mono text-xs">{webhook.url}</code>
                                 <a
                                   href={webhook.url}
                                   target="_blank"
@@ -225,54 +202,56 @@ const SchedulesPage = () => {
                                   <ExternalLink className="h-3 w-3" />
                                 </a>
                               </div>
+                              {webhook.headers && Object.keys(webhook.headers).length > 0 && (
+                                <div className="flex items-center gap-1.5">
+                                  <span>
+                                    {Object.keys(webhook.headers).length} header
+                                    {Object.keys(webhook.headers).length !== 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
 
-                        {/* Additional Metadata */}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-shrink-0">
-                          {webhook.headers && Object.keys(webhook.headers).length > 0 && (
-                            <span className="hidden lg:inline">
-                              {Object.keys(webhook.headers).length} header
-                              {Object.keys(webhook.headers).length !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Right Side - Cron Expression and Toggle */}
-                      <div className="flex items-center gap-4 flex-shrink-0">
-                        {/* Schedule Expression */}
-                        <div className="hidden md:flex items-center gap-2 flex-shrink-0 max-w-xs">
-                          <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-xs text-muted-foreground truncate cursor-help">
-                                {webhook.job?.schedule
-                                  ? (() => {
+                        {/* Right Side - Schedule, Time and Toggle */}
+                        <div
+                          className="flex items-center gap-4 flex-shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {webhook.job?.schedule && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <CalendarClock className="h-3 w-3" />
+                                  <span className="truncate max-w-[200px]">
+                                    {(() => {
                                       const description = describeCronExpression(
                                         webhook.job.schedule
                                       );
                                       return description.isValid
                                         ? description.description
                                         : webhook.job.schedule;
-                                    })()
-                                  : 'N/A'}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="max-w-xs">
-                              <div className="space-y-1">
-                                <p className="text-xs font-medium">Schedule</p>
-                                <code className="text-xs font-mono">
-                                  {webhook.job?.schedule || 'N/A'}
-                                </code>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-
-                        {/* Toggle */}
-                        <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                    })()}
+                                  </span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="space-y-1">
+                                  <p className="text-xs font-medium">Schedule</p>
+                                  <code className="text-xs font-mono">{webhook.job.schedule}</code>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>
+                              {formatDistanceToNow(new Date(webhook.created_at), {
+                                addSuffix: true,
+                              })}
+                            </span>
+                          </div>
                           <Switch
                             checked={webhook.job?.enabled ?? false}
                             onCheckedChange={(checked) =>
@@ -285,40 +264,40 @@ const SchedulesPage = () => {
                             disabled={updateWebhook.isPending}
                           />
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-
-            {/* Pagination */}
-            {!isLoading && webhooks.length > 0 && (
-              <div className="mt-6 flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Page {currentPage} • {webhooks.length} item{webhooks.length !== 1 ? 's' : ''}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => p + 1)}
-                    disabled={webhooks.length < ITEMS_PER_PAGE}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              </div>
+
+                {/* Pagination */}
+                {!isLoading && webhooks.length > 0 && (
+                  <div className="mt-6 flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Page {currentPage} • {webhooks.length} item{webhooks.length !== 1 ? 's' : ''}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => p + 1)}
+                        disabled={webhooks.length < ITEMS_PER_PAGE}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </FadeIn>
         </div>
