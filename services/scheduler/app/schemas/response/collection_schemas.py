@@ -1,5 +1,5 @@
 """
-Response schemas for load test operations.
+Response schemas for collection operations.
 """
 
 from datetime import datetime
@@ -23,13 +23,13 @@ class WebhookResponse(BaseModel):
     order: Optional[int] = None
 
 
-class LoadTestResultResponse(BaseModel):
-    """Schema for individual load test result"""
+class CollectionResultResponse(BaseModel):
+    """Schema for individual collection result"""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: str
-    load_test_report_id: str
+    collection_report_id: str
     endpoint_path: str
     method: str
     request_headers: Optional[dict] = None
@@ -43,13 +43,13 @@ class LoadTestResultResponse(BaseModel):
     created_at: datetime
 
 
-class LoadTestReportResponse(BaseModel):
-    """Schema for load test report"""
+class CollectionReportResponse(BaseModel):
+    """Schema for collection report"""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: str
-    load_test_run_id: str
+    collection_run_id: str
     name: Optional[str] = None
     total_requests: int
     successful_requests: int
@@ -64,13 +64,13 @@ class LoadTestReportResponse(BaseModel):
     updated_at: datetime
 
 
-class LoadTestReportWithResultsResponse(BaseModel):
-    """Schema for load test report with results"""
+class CollectionReportWithResultsResponse(BaseModel):
+    """Schema for collection report with results"""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: str
-    load_test_run_id: str
+    collection_run_id: str
     name: Optional[str] = None
     total_requests: int
     successful_requests: int
@@ -83,7 +83,7 @@ class LoadTestReportWithResultsResponse(BaseModel):
     notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    results: List[LoadTestResultResponse] = Field(default_factory=list)
+    results: List[CollectionResultResponse] = Field(default_factory=list)
 
 
 class CollectionResponse(BaseModel):
@@ -101,8 +101,8 @@ class CollectionResponse(BaseModel):
     webhooks: List[WebhookResponse] = Field(default_factory=list)
 
 
-class LoadTestRunResponse(BaseModel):
-    """Schema for load test run"""
+class CollectionRunResponse(BaseModel):
+    """Schema for collection run"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -119,8 +119,8 @@ class LoadTestRunResponse(BaseModel):
     collection: Optional[CollectionResponse] = None
 
 
-class LoadTestRunWithReportsResponse(BaseModel):
-    """Schema for load test run with reports"""
+class CollectionRunWithReportsResponse(BaseModel):
+    """Schema for collection run with reports"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -131,7 +131,7 @@ class LoadTestRunWithReportsResponse(BaseModel):
     completed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
-    reports: List[LoadTestReportWithResultsResponse] = Field(default_factory=list)
+    reports: List[CollectionReportWithResultsResponse] = Field(default_factory=list)
     collection: Optional[CollectionResponse] = None
 
 
@@ -147,4 +147,4 @@ class CollectionWithRunsResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     webhooks: List[WebhookResponse] = Field(default_factory=list)
-    runs: List[LoadTestRunResponse] = Field(default_factory=list)
+    runs: List[CollectionRunResponse] = Field(default_factory=list)

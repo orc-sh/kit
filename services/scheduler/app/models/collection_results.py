@@ -1,5 +1,5 @@
 """
-Load test result model for storing individual request results from load tests.
+Collection result model for storing individual request results from collections.
 """
 
 from sqlalchemy import JSON, TIMESTAMP, Column, ForeignKey, Index, Integer, String, Text
@@ -9,11 +9,11 @@ from sqlalchemy.sql import func
 from .base import Base
 
 
-class LoadTestResult(Base):
-    __tablename__ = "load_test_results"
+class CollectionResult(Base):
+    __tablename__ = "collection_results"
 
     id = Column(String(36), primary_key=True)
-    load_test_report_id = Column(String(36), ForeignKey("load_test_reports.id", ondelete="CASCADE"), nullable=False)
+    collection_report_id = Column(String(36), ForeignKey("collection_reports.id", ondelete="CASCADE"), nullable=False)
 
     # Request details
     endpoint_path = Column(String(512), nullable=False)
@@ -35,10 +35,10 @@ class LoadTestResult(Base):
     created_at = Column(TIMESTAMP, server_default=func.current_timestamp())
 
     # Relationships
-    report = relationship("LoadTestReport", back_populates="results")
+    report = relationship("CollectionReport", back_populates="results")
 
     __table_args__ = (
-        Index("idx_load_test_results_report_id", "load_test_report_id"),
-        Index("idx_load_test_results_created_at", "created_at"),
-        Index("idx_load_test_results_is_success", "is_success"),
+        Index("idx_collection_results_report_id", "collection_report_id"),
+        Index("idx_collection_results_created_at", "created_at"),
+        Index("idx_collection_results_is_success", "is_success"),
     )

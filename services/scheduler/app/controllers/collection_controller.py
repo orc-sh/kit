@@ -1,5 +1,5 @@
 """
-Load test controller for managing load/stress test operations.
+Collection controller for managing collection operations.
 """
 
 from typing import List, Optional
@@ -9,31 +9,30 @@ from sqlalchemy.orm import Session
 
 from app.celery import scheduler as celery_app
 from app.middleware.auth_middleware import get_current_user
+from app.models.collection_reports import CollectionReport
+from app.models.collection_runs import CollectionRun
 from app.models.collections import Collection
-from app.models.load_test_reports import LoadTestReport
-from app.models.load_test_runs import LoadTestRun
 from app.models.user import User
 from app.models.webhooks import Webhook
-from app.schemas.request.load_test_schemas import (
+from app.schemas.request.collection_schemas import (
     CreateCollectionRequest,
-    CreateLoadTestRunRequest,
+    CreateCollectionRunRequest,
     CreateWebhookRequest,
     ReorderWebhooksRequest,
     UpdateCollectionRequest,
     UpdateWebhookRequest,
 )
-from app.schemas.response.load_test_schemas import (
+from app.schemas.response.collection_schemas import (
+    CollectionReportResponse,
+    CollectionReportWithResultsResponse,
     CollectionResponse,
+    CollectionRunResponse,
+    CollectionRunWithReportsResponse,
     CollectionWithRunsResponse,
-    LoadTestReportResponse,
-    LoadTestReportWithResultsResponse,
-    LoadTestRunResponse,
-    LoadTestRunWithReportsResponse,
     WebhookResponse,
 )
 from app.schemas.response.pagination_schemas import PaginatedResponse, PaginationMetadata
 from app.services.collection_service import get_collection_service
-from app.services.load_test_service import get_load_test_service
 from app.services.project_service import get_project_service
 from app.services.webhook_service import get_webhook_service
 from db.client import client
@@ -45,13 +44,13 @@ def build_webhook_response(webhook: Webhook) -> WebhookResponse:
     """Build a WebhookResponse from Webhook."""
     return WebhookResponse(
         id=str(webhook.id),
-        url=webhook.url,
-        method=webhook.method,
-        headers=webhook.headers,
-        query_params=webhook.query_params,
-        body_template=webhook.body_template,
-        content_type=webhook.content_type,
-        order=webhook.order,
+        url=str(webhook.url) if webhook.url else "",  # type: ignore[truthy-function]
+        method=str(webhook.method) if webhook.method else "POST",  # type: ignore[truthy-function]
+        headers=webhook.headers,  # type: ignore[arg-type]
+        query_params=webhook.query_params,  # type: ignore[arg-type]
+        body_template=webhook.body_template,  # type: ignore[arg-type]
+        content_type=webhook.content_type,  # type: ignore[arg-type]
+        order=webhook.order,  # type: ignore[arg-type]
     )
 
 
@@ -64,16 +63,16 @@ def build_collection_response(collection: Collection, include_webhooks: bool = T
     return CollectionResponse(
         id=str(collection.id),
         project_id=str(collection.project_id),
-        name=collection.name,
-        description=collection.description,
-        created_at=collection.created_at,
-        updated_at=collection.updated_at,
+        name=collection.name,  # type: ignore[arg-type]
+        description=collection.description,  # type: ignore[arg-type]
+        created_at=collection.created_at,  # type: ignore[arg-type]
+        updated_at=collection.updated_at,  # type: ignore[arg-type]
         webhooks=webhook_responses,
     )
 
 
-def build_run_response(run: LoadTestRun, include_collection: bool = False) -> LoadTestRunResponse:
-    """Build a LoadTestRunResponse from LoadTestRun."""
+def build_run_response(run: CollectionRun, include_collection: bool = False) -> CollectionRunResponse:
+    """Build a CollectionRunResponse from CollectionRun."""
     collection_response = None
     if include_collection and run.collection:
         collection_response = CollectionResponse(
@@ -82,43 +81,63 @@ def build_run_response(run: LoadTestRun, include_collection: bool = False) -> Lo
             description=run.collection.description,
         )
 
-    return LoadTestRunResponse(
+    return CollectionRunResponse(
         id=str(run.id),
         collection_id=str(run.collection_id),
-        status=run.status,
-        concurrent_users=run.concurrent_users,
-        duration_seconds=run.duration_seconds,
-        requests_per_second=run.requests_per_second,
-        started_at=run.started_at,
-        completed_at=run.completed_at,
-        created_at=run.created_at,
-        updated_at=run.updated_at,
+        status=str(run.status) if run.status else "pending",  # type: ignore[truthy-function]
+        concurrent_users=(
+            int(run.concurrent_users) if run.concurrent_users else 0
+        ),  # type: ignore[truthy-function,arg-type]
+        duration_seconds=(
+            int(run.duration_seconds) if run.duration_seconds else 0
+        ),  # type: ignore[truthy-function,arg-type]
+        requests_per_second=int(run.requests_per_second) if run.requests_per_second else None,  # type: ignore[arg-type]
+        started_at=run.started_at,  # type: ignore[arg-type]
+        completed_at=run.completed_at,  # type: ignore[arg-type]
+        created_at=run.created_at,  # type: ignore[arg-type]
+        updated_at=run.updated_at,  # type: ignore[arg-type]
         collection=collection_response,
     )
 
 
-def build_report_response(report: LoadTestReport) -> LoadTestReportResponse:
-    """Build a LoadTestReportResponse from LoadTestReport."""
-    return LoadTestReportResponse(
+def build_report_response(report: CollectionReport) -> CollectionReportResponse:
+    """Build a CollectionReportResponse from CollectionReport."""
+    return CollectionReportResponse(
         id=str(report.id),
-        load_test_run_id=str(report.load_test_run_id),
-        name=report.name,
-        total_requests=report.total_requests,
-        successful_requests=report.successful_requests,
-        failed_requests=report.failed_requests,
-        avg_response_time_ms=report.avg_response_time_ms,
-        min_response_time_ms=report.min_response_time_ms,
-        max_response_time_ms=report.max_response_time_ms,
-        p95_response_time_ms=report.p95_response_time_ms,
-        p99_response_time_ms=report.p99_response_time_ms,
-        notes=report.notes,
-        created_at=report.created_at,
-        updated_at=report.updated_at,
+        collection_run_id=str(report.collection_run_id),
+        name=report.name,  # type: ignore[arg-type]
+        total_requests=(
+            int(report.total_requests) if report.total_requests else 0
+        ),  # type: ignore[truthy-function,arg-type]
+        successful_requests=(
+            int(report.successful_requests) if report.successful_requests else 0
+        ),  # type: ignore[truthy-function,arg-type]
+        failed_requests=(
+            int(report.failed_requests) if report.failed_requests else 0
+        ),  # type: ignore[truthy-function,arg-type]
+        avg_response_time_ms=(
+            int(report.avg_response_time_ms) if report.avg_response_time_ms else None
+        ),  # type: ignore[truthy-function,arg-type]
+        min_response_time_ms=(
+            int(report.min_response_time_ms) if report.min_response_time_ms else None
+        ),  # type: ignore[truthy-function,arg-type]
+        max_response_time_ms=(
+            int(report.max_response_time_ms) if report.max_response_time_ms else None
+        ),  # type: ignore[truthy-function,arg-type]
+        p95_response_time_ms=(
+            int(report.p95_response_time_ms) if report.p95_response_time_ms else None
+        ),  # type: ignore[truthy-function,arg-type]
+        p99_response_time_ms=(
+            int(report.p99_response_time_ms) if report.p99_response_time_ms else None
+        ),  # type: ignore[truthy-function,arg-type]
+        notes=report.notes,  # type: ignore[arg-type]
+        created_at=report.created_at,  # type: ignore[arg-type]
+        updated_at=report.updated_at,  # type: ignore[arg-type]
     )
 
 
 # Collection endpoints
-@router.post("/collections", response_model=CollectionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=CollectionResponse, status_code=status.HTTP_201_CREATED)
 async def create_collection(
     request: CreateCollectionRequest,
     user: User = Depends(get_current_user),
@@ -168,7 +187,7 @@ async def create_collection(
     return build_collection_response(collection)
 
 
-@router.get("/collections", response_model=PaginatedResponse[CollectionResponse])
+@router.get("/", response_model=PaginatedResponse[CollectionResponse])
 async def get_collections(
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page (max: 100)"),
@@ -215,6 +234,8 @@ async def get_collections(
                 total_pages=0,
                 has_next=False,
                 has_previous=False,
+                next_page=None,
+                previous_page=None,
             ),
         )
 
@@ -246,18 +267,20 @@ async def get_collections(
             total_pages=total_pages,
             has_next=page < total_pages,
             has_previous=page > 1,
+            next_page=page + 1 if page < total_pages else None,
+            previous_page=page - 1 if page > 1 else None,
         ),
     )
 
 
-@router.get("/collections/{collection_id}", response_model=CollectionWithRunsResponse)
-async def get_load_test_collection(
+@router.get("/{collection_id}", response_model=CollectionWithRunsResponse)
+async def get_collection_collection(
     collection_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(client),
 ):
     """
-    Get a load test collection with its runs.
+    Get a collection collection with its runs.
 
     Args:
         collection_id: ID of the collection
@@ -265,7 +288,7 @@ async def get_load_test_collection(
         db: Database session
 
     Returns:
-        Load test collection with runs
+        Collection collection with runs
     """
     collection_service = get_collection_service(db)
     collection = collection_service.get_collection(collection_id)
@@ -292,8 +315,8 @@ async def get_load_test_collection(
         collection.webhooks = webhooks
 
     # Get runs
-    load_test_service = get_load_test_service(db)
-    runs = load_test_service.get_load_test_runs_by_collection(collection_id, skip=0, limit=100)
+    collection_service = get_collection_service(db)
+    runs = collection_service.get_collection_runs_by_collection(collection_id, skip=0, limit=100)
 
     config_response = build_collection_response(collection)
     return CollectionWithRunsResponse(
@@ -302,8 +325,8 @@ async def get_load_test_collection(
     )
 
 
-@router.put("/collections/{collection_id}", response_model=CollectionResponse)
-async def update_load_test_collection(
+@router.put("/{collection_id}", response_model=CollectionResponse)
+async def update_collection_collection(
     collection_id: str,
     request: UpdateCollectionRequest,
     user: User = Depends(get_current_user),
@@ -359,14 +382,14 @@ async def update_load_test_collection(
     return build_collection_response(updated_config)
 
 
-@router.delete("/collections/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_load_test_collection(
+@router.delete("/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_collection_collection(
     collection_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(client),
 ):
     """
-    Delete a load test collection and all its runs.
+    Delete a collection collection and all its runs.
 
     Args:
         collection_id: ID of the collection
@@ -395,17 +418,15 @@ async def delete_load_test_collection(
 
 
 # Run endpoints
-@router.post(
-    "/collections/{collection_id}/runs", response_model=LoadTestRunResponse, status_code=status.HTTP_201_CREATED
-)
-async def create_load_test_run(
+@router.post("/{collection_id}/runs", response_model=CollectionRunResponse, status_code=status.HTTP_201_CREATED)
+async def create_collection_run(
     collection_id: str,
-    request: CreateLoadTestRunRequest,
+    request: CreateCollectionRunRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(client),
 ):
     """
-    Create a new load test run from a collection.
+    Create a new collection run from a collection.
 
     Args:
         collection_id: ID of the collection
@@ -414,7 +435,7 @@ async def create_load_test_run(
         db: Database session
 
     Returns:
-        Created load test run
+        Created collection run
     """
     collection_service = get_collection_service(db)
     collection = collection_service.get_collection(collection_id)
@@ -435,17 +456,17 @@ async def create_load_test_run(
         )
 
     # Create run with execution parameters
-    load_test_service = get_load_test_service(db)
-    run = load_test_service.create_load_test_run(
+    collection_service = get_collection_service(db)
+    run = collection_service.create_collection_run(
         collection_id,
         concurrent_users=request.concurrent_users,
         duration_seconds=request.duration_seconds,
         requests_per_second=request.requests_per_second,
     )
 
-    # Start load test in background using Celery
+    # Start collection in background using Celery
     celery_app.send_task(
-        "app.tasks.run_load_test.run_load_test",
+        "app.tasks.run_collection.run_collection",
         args=[str(run.id)],
         kwargs={},
     )
@@ -453,8 +474,8 @@ async def create_load_test_run(
     return build_run_response(run)
 
 
-@router.get("/collections/{collection_id}/runs", response_model=List[LoadTestRunResponse])
-async def get_load_test_runs(
+@router.get("/{collection_id}/runs", response_model=List[CollectionRunResponse])
+async def get_collection_runs(
     collection_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(client),
@@ -468,7 +489,7 @@ async def get_load_test_runs(
         db: Database session
 
     Returns:
-        List of load test runs
+        List of collection runs
     """
     collection_service = get_collection_service(db)
     collection = collection_service.get_collection(collection_id)
@@ -488,14 +509,14 @@ async def get_load_test_runs(
             detail="You don't have permission to access this collection",
         )
 
-    load_test_service = get_load_test_service(db)
-    runs = load_test_service.get_load_test_runs_by_collection(collection_id, skip=0, limit=100)
+    collection_service = get_collection_service(db)
+    runs = collection_service.get_collection_runs_by_collection(collection_id, skip=0, limit=100)
 
     return [build_run_response(run) for run in runs]
 
 
-@router.get("/runs/{run_id}", response_model=LoadTestRunWithReportsResponse)
-async def get_load_test_run(
+@router.get("/runs/{run_id}", response_model=CollectionRunWithReportsResponse)
+async def get_collection_run(
     run_id: str,
     include_results: bool = Query(False, description="Include first page of results for each report"),
     results_page_size: int = Query(50, ge=1, le=100, description="Number of results per report"),
@@ -503,7 +524,7 @@ async def get_load_test_run(
     db: Session = Depends(client),
 ):
     """
-    Get a load test run with its reports.
+    Get a collection run with its reports.
 
     Args:
         run_id: ID of the run
@@ -513,22 +534,22 @@ async def get_load_test_run(
         db: Database session
 
     Returns:
-        Load test run with reports (optionally including results)
+        Collection run with reports (optionally including results)
     """
-    from app.schemas.response.load_test_schemas import LoadTestReportWithResultsResponse, LoadTestResultResponse
+    from app.schemas.response.collection_schemas import CollectionReportWithResultsResponse, CollectionResultResponse
 
-    load_test_service = get_load_test_service(db)
-    run = load_test_service.get_load_test_run(run_id)
+    collection_service = get_collection_service(db)
+    run = collection_service.get_collection_run(run_id)
 
     if not run:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Load test run with ID '{run_id}' not found",
+            detail=f"Collection run with ID '{run_id}' not found",
         )
 
     # Verify user has access through collection
     collection_service = get_collection_service(db)
-    collection = collection_service.get_collection(run.collection_id)
+    collection = collection_service.get_collection(str(run.collection_id))
     if not collection:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -544,40 +565,44 @@ async def get_load_test_run(
         )
 
     # Get reports
-    reports = load_test_service.get_load_test_reports_by_run(run_id, skip=0, limit=100)
+    reports = collection_service.get_collection_reports_by_run(run_id, skip=0, limit=100)
 
     if include_results:
         # Include first page of results for each report
         report_responses = []
         for report in reports:
             # Get first page of results
-            results = load_test_service.get_load_test_results(
-                report.id,
+            results = collection_service.get_collection_results(
+                str(report.id),
                 limit=results_page_size,
                 offset=0,
             )
 
             result_responses = [
-                LoadTestResultResponse(
+                CollectionResultResponse(
                     id=str(r.id),
-                    load_test_report_id=str(r.load_test_report_id),
-                    endpoint_path=r.endpoint_path,
-                    method=r.method,
-                    request_headers=r.request_headers,
-                    request_body=r.request_body,
-                    response_status=r.response_status,
-                    response_headers=r.response_headers,
-                    response_body=r.response_body,
-                    response_time_ms=r.response_time_ms,
-                    error_message=r.error_message,
+                    collection_report_id=str(r.collection_report_id),
+                    endpoint_path=str(r.endpoint_path) if r.endpoint_path else "",  # type: ignore[truthy-function]
+                    method=str(r.method) if r.method else "GET",  # type: ignore[truthy-function]
+                    request_headers=r.request_headers,  # type: ignore[arg-type]
+                    request_body=r.request_body,  # type: ignore[arg-type]
+                    response_status=(
+                        int(r.response_status) if r.response_status else None
+                    ),  # type: ignore[truthy-function,arg-type]
+                    response_headers=r.response_headers,  # type: ignore[arg-type]
+                    response_body=r.response_body,  # type: ignore[arg-type]
+                    response_time_ms=(
+                        int(r.response_time_ms) if r.response_time_ms else 0
+                    ),  # type: ignore[truthy-function,arg-type]
+                    error_message=r.error_message,  # type: ignore[arg-type]
                     is_success=bool(r.is_success),
-                    created_at=r.created_at,
+                    created_at=r.created_at,  # type: ignore[arg-type]
                 )
                 for r in results
             ]
 
             # Build report response with results
-            report_response = LoadTestReportWithResultsResponse(
+            report_response = CollectionReportWithResultsResponse(
                 **build_report_response(report).model_dump(),
                 results=result_responses,
             )
@@ -585,48 +610,48 @@ async def get_load_test_run(
     else:
         # Return reports without results
         report_responses = [
-            LoadTestReportWithResultsResponse(
+            CollectionReportWithResultsResponse(
                 **build_report_response(report).model_dump(),
                 results=[],
             )
             for report in reports
         ]
 
-    return LoadTestRunWithReportsResponse(
+    return CollectionRunWithReportsResponse(
         **build_run_response(run).model_dump(),
         reports=report_responses,
     )
 
 
-@router.post("/runs/{run_id}/run", response_model=LoadTestRunResponse)
-async def run_load_test(
+@router.post("/runs/{run_id}/run", response_model=CollectionRunResponse)
+async def run_collection(
     run_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(client),
 ):
     """
-    Manually trigger a load test run.
+    Manually trigger a collection run.
 
     Args:
-        run_id: ID of the load test run to execute
+        run_id: ID of the collection run to execute
         user: Current authenticated user
         db: Database session
 
     Returns:
-        Load test run data
+        Collection run data
     """
-    load_test_service = get_load_test_service(db)
-    load_test_run = load_test_service.get_load_test_run(run_id)
+    collection_service = get_collection_service(db)
+    collection_run = collection_service.get_collection_run(run_id)
 
-    if not load_test_run:
+    if not collection_run:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Load test run with ID '{run_id}' not found",
+            detail=f"Collection run with ID '{run_id}' not found",
         )
 
     # Verify user has access
     collection_service = get_collection_service(db)
-    collection = collection_service.get_collection(load_test_run.collection_id)
+    collection = collection_service.get_collection(str(collection_run.collection_id))
     if not collection:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -638,71 +663,71 @@ async def run_load_test(
     if not project:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to run this load test",
+            detail="You don't have permission to run this collection",
         )
 
     # Don't allow running if test is already running
-    if load_test_run.status == "running":
+    if str(collection_run.status) == "running":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Load test is already running",
+            detail="Collection is already running",
         )
 
     # Reset status to pending if it's completed or failed (allows re-running)
-    if load_test_run.status in ("completed", "failed"):
-        load_test_run.status = "pending"
-        load_test_run.started_at = None
-        load_test_run.completed_at = None
+    if str(collection_run.status) in ("completed", "failed"):
+        collection_run.status = "pending"  # type: ignore[assignment]
+        collection_run.started_at = None  # type: ignore[assignment]
+        collection_run.completed_at = None  # type: ignore[assignment]
 
         # Delete old reports and results
-        from app.models.load_test_results import LoadTestResult
+        from app.models.collection_results import CollectionResult
 
-        reports = load_test_service.get_load_test_reports_by_run(run_id, skip=0, limit=1000)
+        reports = collection_service.get_collection_reports_by_run(run_id, skip=0, limit=1000)
         for report in reports:
             # Delete results for this report
-            db.query(LoadTestResult).filter(LoadTestResult.load_test_report_id == report.id).delete()
+            db.query(CollectionResult).filter(CollectionResult.collection_report_id == report.id).delete()
             # Delete report
             db.delete(report)
 
         db.commit()
 
-    # Enqueue Celery task to run the load test
+    # Enqueue Celery task to run the collection
     celery_app.send_task(
-        "app.tasks.run_load_test.run_load_test",
-        args=[str(load_test_run.id)],
+        "app.tasks.run_collection.run_collection",
+        args=[str(collection_run.id)],
         kwargs={},
     )
 
-    db.refresh(load_test_run)
-    return build_run_response(load_test_run)
+    db.refresh(collection_run)
+    return build_run_response(collection_run)
 
 
 @router.delete("/runs/{run_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_load_test_run(
+async def delete_collection_run(
     run_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(client),
 ):
     """
-    Delete a load test run and all its reports.
+    Delete a collection run and all its reports.
 
     Args:
         run_id: ID of the run
         user: Current authenticated user
         db: Database session
     """
-    load_test_service = get_load_test_service(db)
-    load_test_run = load_test_service.get_load_test_run(run_id)
+    collection_service = get_collection_service(db)
+    collection_run = collection_service.get_collection_run(run_id)
 
-    if not load_test_run:
+    if not collection_run:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Load test run with ID '{run_id}' not found",
+            detail=f"Collection run with ID '{run_id}' not found",
         )
 
     # Verify user has access
     collection_service = get_collection_service(db)
-    collection = collection_service.get_collection(load_test_run.collection_id)
+    collection = collection_service.get_collection(str(collection_run.collection_id))
     if not collection:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -717,18 +742,18 @@ async def delete_load_test_run(
             detail="You don't have permission to delete this run",
         )
 
-    load_test_service.delete_load_test_run(run_id)
+    collection_service.delete_collection_run(run_id)
 
 
 # Report endpoints
-@router.get("/runs/{run_id}/reports", response_model=List[LoadTestReportResponse])
-async def get_load_test_reports(
+@router.get("/runs/{run_id}/reports", response_model=List[CollectionReportResponse])
+async def get_collection_reports(
     run_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(client),
 ):
     """
-    Get all reports for a load test run.
+    Get all reports for a collection run.
 
     Args:
         run_id: ID of the run
@@ -736,20 +761,20 @@ async def get_load_test_reports(
         db: Database session
 
     Returns:
-        List of load test reports
+        List of collection reports
     """
-    load_test_service = get_load_test_service(db)
-    run = load_test_service.get_load_test_run(run_id)
+    collection_service = get_collection_service(db)
+    run = collection_service.get_collection_run(run_id)
 
     if not run:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Load test run with ID '{run_id}' not found",
+            detail=f"Collection run with ID '{run_id}' not found",
         )
 
     # Verify user has access
     collection_service = get_collection_service(db)
-    collection = collection_service.get_collection(run.collection_id)
+    collection = collection_service.get_collection(str(run.collection_id))
     if not collection:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -764,12 +789,12 @@ async def get_load_test_reports(
             detail="You don't have permission to access this run",
         )
 
-    reports = load_test_service.get_load_test_reports_by_run(run_id, skip=0, limit=100)
+    reports = collection_service.get_collection_reports_by_run(run_id, skip=0, limit=100)
     return [build_report_response(report) for report in reports]
 
 
-@router.get("/reports/{report_id}", response_model=LoadTestReportWithResultsResponse)
-async def get_load_test_report(
+@router.get("/reports/{report_id}", response_model=CollectionReportWithResultsResponse)
+async def get_collection_report(
     report_id: str,
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(50, ge=1, le=100, description="Number of items per page (max: 100)"),
@@ -777,7 +802,7 @@ async def get_load_test_report(
     db: Session = Depends(client),
 ):
     """
-    Get a load test report with its results.
+    Get a collection report with its results.
 
     Args:
         report_id: ID of the report
@@ -787,21 +812,21 @@ async def get_load_test_report(
         db: Database session
 
     Returns:
-        Load test report with results
+        Collection report with results
     """
-    from app.schemas.response.load_test_schemas import LoadTestResultResponse
+    from app.schemas.response.collection_schemas import CollectionResultResponse
 
-    load_test_service = get_load_test_service(db)
-    report = db.query(LoadTestReport).filter(LoadTestReport.id == report_id).first()
+    collection_service = get_collection_service(db)
+    report = db.query(CollectionReport).filter(CollectionReport.id == report_id).first()
 
     if not report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Load test report with ID '{report_id}' not found",
+            detail=f"Collection report with ID '{report_id}' not found",
         )
 
     # Verify user has access through run -> collection
-    run = load_test_service.get_load_test_run(report.load_test_run_id)
+    run = collection_service.get_collection_run(str(report.collection_run_id))
     if not run:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -809,7 +834,7 @@ async def get_load_test_report(
         )
 
     collection_service = get_collection_service(db)
-    collection = collection_service.get_collection(run.collection_id)
+    collection = collection_service.get_collection(str(run.collection_id))
     if not collection:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -826,37 +851,39 @@ async def get_load_test_report(
 
     # Get results
     offset = (page - 1) * page_size
-    results = load_test_service.get_load_test_results(report_id, limit=page_size, offset=offset)
+    results = collection_service.get_collection_results(report_id, limit=page_size, offset=offset)
 
     result_responses = [
-        LoadTestResultResponse(
+        CollectionResultResponse(
             id=str(r.id),
-            load_test_report_id=str(r.load_test_report_id),
-            endpoint_path=r.endpoint_path,
-            method=r.method,
-            request_headers=r.request_headers,
-            request_body=r.request_body,
-            response_status=r.response_status,
-            response_headers=r.response_headers,
-            response_body=r.response_body,
-            response_time_ms=r.response_time_ms,
-            error_message=r.error_message,
+            collection_report_id=str(r.collection_report_id),
+            endpoint_path=str(r.endpoint_path) if r.endpoint_path else "",  # type: ignore[truthy-function]
+            method=str(r.method) if r.method else "GET",  # type: ignore[truthy-function]
+            request_headers=r.request_headers,  # type: ignore[arg-type]
+            request_body=r.request_body,  # type: ignore[arg-type]
+            response_status=(
+                int(r.response_status) if r.response_status else None
+            ),  # type: ignore[truthy-function,arg-type]
+            response_headers=r.response_headers,  # type: ignore[arg-type]
+            response_body=r.response_body,  # type: ignore[arg-type]
+            response_time_ms=(
+                int(r.response_time_ms) if r.response_time_ms else 0
+            ),  # type: ignore[truthy-function,arg-type]
+            error_message=r.error_message,  # type: ignore[arg-type]
             is_success=bool(r.is_success),
-            created_at=r.created_at,
+            created_at=r.created_at,  # type: ignore[arg-type]
         )
         for r in results
     ]
 
-    return LoadTestReportWithResultsResponse(
+    return CollectionReportWithResultsResponse(
         **build_report_response(report).model_dump(),
         results=result_responses,
     )
 
 
 # Webhook management endpoints
-@router.post(
-    "/collections/{collection_id}/webhooks", response_model=WebhookResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("/{collection_id}/webhooks", response_model=WebhookResponse, status_code=status.HTTP_201_CREATED)
 async def create_webhook(
     collection_id: str,
     request: CreateWebhookRequest,
@@ -864,10 +891,10 @@ async def create_webhook(
     db: Session = Depends(client),
 ):
     """
-    Create a new webhook for a load test collection.
+    Create a new webhook for a collection collection.
 
     Args:
-        collection_id: ID of the load test collection
+        collection_id: ID of the collection collection
         request: Webhook creation request
         user: Current authenticated user
         db: Database session
@@ -938,9 +965,9 @@ async def update_webhook(
         )
 
     # Verify user has access through collection
-    if webhook.collection_id:
+    if webhook.collection_id:  # type: ignore[truthy-function]
         collection_service = get_collection_service(db)
-        collection = collection_service.get_collection(webhook.collection_id)
+        collection = collection_service.get_collection(str(webhook.collection_id))
         if collection:
             project_service = get_project_service(db)
             project = project_service.get_project(str(collection.project_id), user.id)
@@ -995,9 +1022,9 @@ async def delete_webhook(
         )
 
     # Verify user has access through collection
-    if webhook.collection_id:
+    if webhook.collection_id:  # type: ignore[truthy-function]
         collection_service = get_collection_service(db)
-        collection = collection_service.get_collection(webhook.collection_id)
+        collection = collection_service.get_collection(str(webhook.collection_id))
         if collection:
             project_service = get_project_service(db)
             project = project_service.get_project(str(collection.project_id), user.id)
@@ -1010,7 +1037,7 @@ async def delete_webhook(
     webhook_service.delete_webhook(webhook_id)
 
 
-@router.patch("/collections/{collection_id}/webhooks/reorder", status_code=status.HTTP_204_NO_CONTENT)
+@router.patch("/{collection_id}/webhooks/reorder", status_code=status.HTTP_204_NO_CONTENT)
 async def reorder_webhooks(
     collection_id: str,
     request: ReorderWebhooksRequest,

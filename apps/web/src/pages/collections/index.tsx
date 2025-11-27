@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCollections } from '@/hooks/use-load-tests';
+import { useCollections } from '@/hooks/use-collections';
 import { useProjects } from '@/hooks/use-projects';
 import { FadeIn } from '@/components/motion/fade-in';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ const CollectionsPage = () => {
   const { data: projectsData } = useProjects(1, 1);
   const firstProject = projectsData?.data?.[0];
 
-  // Fetch load test configurations
+  // Fetch collection configurations
   const { data: configsData, isLoading, isError } = useCollections(currentPage, pageSize);
 
   const configurations = configsData?.data || [];
@@ -34,10 +34,10 @@ const CollectionsPage = () => {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Collections</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Create collections of web requests and run load tests
+                Create collections of web requests and run collections
               </p>
             </div>
-            <Button onClick={() => navigate('/load-tests/new')}>
+            <Button onClick={() => navigate('/collections/new')}>
               <Plus className="mr-2 h-4 w-4" />
               New Collection
             </Button>
@@ -77,10 +77,10 @@ const CollectionsPage = () => {
               </div>
               <h2 className="mt-6 text-xl font-semibold">No collections yet</h2>
               <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                Create a collection to group web requests together. You can then run load tests with
-                different execution parameters.
+                Create a collection to group web requests together. You can then run collections
+                with different execution parameters.
               </p>
-              <Button onClick={() => navigate('/load-tests/new')} className="mt-6" size="lg">
+              <Button onClick={() => navigate('/collections/new')} className="mt-6" size="lg">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Collection
               </Button>
@@ -95,7 +95,7 @@ const CollectionsPage = () => {
                   <Card
                     key={config.id}
                     className="group rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm cursor-pointer"
-                    onClick={() => navigate(`/load-tests/${config.id}`)}
+                    onClick={() => navigate(`/collections/${config.id}`)}
                   >
                     <CardContent className="flex items-center justify-between gap-6 p-4">
                       {/* Left Side - Information */}

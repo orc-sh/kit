@@ -1,5 +1,5 @@
 """
-Request schemas for load test operations.
+Request schemas for collection operations.
 """
 
 from typing import Any, Dict, List, Optional
@@ -42,8 +42,8 @@ class UpdateCollectionRequest(BaseModel):
     description: Optional[str] = Field(None, description="Description of the collection")
 
 
-class CreateLoadTestRunRequest(BaseModel):
-    """Schema for creating a new load test run from a collection"""
+class CreateCollectionRunRequest(BaseModel):
+    """Schema for creating a new collection run from a collection"""
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -62,10 +62,10 @@ class CreateLoadTestRunRequest(BaseModel):
     requests_per_second: Optional[int] = Field(None, description="Optional rate limit (requests per second)", ge=1)
 
 
-class CreateLoadTestReportRequest(BaseModel):
-    """Schema for creating a new load test report"""
+class CreateCollectionReportRequest(BaseModel):
+    """Schema for creating a new collection report"""
 
-    run_id: str = Field(..., description="ID of the load test run")
+    run_id: str = Field(..., description="ID of the collection run")
     name: Optional[str] = Field(None, description="Optional report name", max_length=255)
     notes: Optional[str] = Field(None, description="Optional notes about the report")
 

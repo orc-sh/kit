@@ -1,5 +1,5 @@
 /**
- * Type definitions for load test-related API responses
+ * Type definitions for collection-related API responses
  */
 
 export interface Webhook {

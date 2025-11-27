@@ -9,6 +9,7 @@ import {
   Hammer,
   CalendarClock,
   Gauge,
+  Package,
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
@@ -56,9 +57,9 @@ const FloatingNavbar = () => {
       path: '/schedules',
     },
     {
-      icon: Gauge,
+      icon: Package,
       label: 'Collections',
-      path: '/load-tests',
+      path: '/collections',
     },
     {
       icon: Hammer,

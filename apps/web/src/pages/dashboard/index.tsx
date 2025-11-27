@@ -71,7 +71,7 @@ const DashboardPage = () => {
                 Manage your webhook-like URL endpoints
               </p>
             </div>
-            <Button onClick={handleCreateUrl} disabled={createUrl.isPending || !firstProject}>
+            <Button onClick={handleCreateUrl} disabled={createUrl.isPending}>
               <Plus className="mr-2 h-4 w-4" />
               Create URL
             </Button>
@@ -114,7 +114,7 @@ const DashboardPage = () => {
                 Create a URL endpoint to receive and log incoming requests. Similar to webhook.site,
                 you can use these endpoints to test and debug webhooks.
               </p>
-              <Button onClick={handleCreateUrl} className="mt-6" size="lg" disabled={!firstProject}>
+              <Button onClick={handleCreateUrl} className="mt-6" size="lg">
                 <Plus className="mr-2 h-4 w-4" />
                 Create URL
               </Button>

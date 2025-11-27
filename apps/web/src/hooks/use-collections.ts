@@ -1,5 +1,5 @@
 /**
- * Custom hook for Load Test API operations
+ * Custom hook for Collection API operations
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -20,7 +20,7 @@ import type {
   UpdateCollectionRequest,
   UpdateWebhookRequest,
   Webhook,
-} from '@/types/load-test.types';
+} from '@/types/collection.types';
 
 /**
  * Fetch all collections with pagination
@@ -31,20 +31,20 @@ export const useCollections = (page: number = 1, pageSize: number = 10, projectI
     queryFn: async () => {
       const params: any = { page, page_size: pageSize };
       if (projectId) params.project_id = projectId;
-      const response = await api.get('/api/load-tests/collections', { params });
+      const response = await api.get('/api/collections', { params });
       return response.data;
     },
   });
 };
 
 /**
- * Fetch a single load test configuration by ID
+ * Fetch a single collection configuration by ID
  */
 export const useCollection = (collectionId: string) => {
   return useQuery<CollectionWithRuns, Error>({
     queryKey: ['collection', collectionId],
     queryFn: async () => {
-      const response = await api.get(`/api/load-tests/collections/${collectionId}`);
+      const response = await api.get(`/api/collections/${collectionId}`);
       return response.data;
     },
     enabled: !!collectionId,
@@ -56,9 +56,9 @@ export const useCollection = (collectionId: string) => {
  */
 export const useCollectionRunsByCollection = (collectionId: string) => {
   return useQuery<CollectionRun[], Error>({
-    queryKey: ['load-test-runs', collectionId],
+    queryKey: ['collection-runs', collectionId],
     queryFn: async () => {
-      const response = await api.get(`/api/load-tests/collections/${collectionId}/runs`);
+      const response = await api.get(`/api/collections/${collectionId}/runs`);
       return response.data;
     },
     enabled: !!collectionId,
@@ -66,17 +66,17 @@ export const useCollectionRunsByCollection = (collectionId: string) => {
 };
 
 /**
- * Fetch a single load test run by ID
+ * Fetch a single collection run by ID
  */
 export const useCollectionRun = (runId: string, includeResults: boolean = false) => {
   return useQuery<CollectionRunWithReports, Error>({
-    queryKey: ['load-test-run', runId, includeResults],
+    queryKey: ['collection-run', runId, includeResults],
     queryFn: async () => {
       const params: any = {};
       if (includeResults) {
         params.include_results = true;
       }
-      const response = await api.get(`/api/load-tests/runs/${runId}`, { params });
+      const response = await api.get(`/api/collections/runs/${runId}`, { params });
       return response.data;
     },
     enabled: !!runId,
@@ -88,9 +88,9 @@ export const useCollectionRun = (runId: string, includeResults: boolean = false)
  */
 export const useCollectionReports = (runId: string) => {
   return useQuery<CollectionReport[], Error>({
-    queryKey: ['load-test-reports', runId],
+    queryKey: ['collection-reports', runId],
     queryFn: async () => {
-      const response = await api.get(`/api/load-tests/runs/${runId}/reports`);
+      const response = await api.get(`/api/collections/runs/${runId}/reports`);
       return response.data;
     },
     enabled: !!runId,
@@ -102,9 +102,9 @@ export const useCollectionReports = (runId: string) => {
  */
 export const useCollectionReport = (reportId: string, page: number = 1, pageSize: number = 50) => {
   return useQuery<CollectionReportWithResults, Error>({
-    queryKey: ['load-test-report', reportId, page, pageSize],
+    queryKey: ['collection-report', reportId, page, pageSize],
     queryFn: async () => {
-      const response = await api.get(`/api/load-tests/reports/${reportId}`, {
+      const response = await api.get(`/api/collections/reports/${reportId}`, {
         params: { page, page_size: pageSize },
       });
       return response.data;
@@ -114,7 +114,7 @@ export const useCollectionReport = (reportId: string, page: number = 1, pageSize
 };
 
 /**
- * Create a new load test configuration
+ * Create a new collection configuration
  */
 export const useCreateCollection = () => {
   const queryClient = useQueryClient();
@@ -122,7 +122,7 @@ export const useCreateCollection = () => {
 
   return useMutation<Collection, Error, CreateCollectionRequest>({
     mutationFn: async (data: CreateCollectionRequest) => {
-      const response = await api.post('/api/load-tests/collections', data);
+      const response = await api.post('/api/collections', data);
       return response.data;
     },
     onSuccess: () => {
@@ -147,7 +147,7 @@ export const useCreateCollection = () => {
 };
 
 /**
- * Update a load test configuration
+ * Update a collection configuration
  */
 export const useUpdateCollection = () => {
   const queryClient = useQueryClient();
@@ -155,7 +155,7 @@ export const useUpdateCollection = () => {
 
   return useMutation<Collection, Error, { id: string; data: UpdateCollectionRequest }>({
     mutationFn: async ({ id, data }) => {
-      const response = await api.put(`/api/load-tests/collections/${id}`, data);
+      const response = await api.put(`/api/collections/${id}`, data);
       return response.data;
     },
     onSuccess: (data) => {
@@ -180,7 +180,7 @@ export const useUpdateCollection = () => {
 };
 
 /**
- * Delete a load test configuration
+ * Delete a collection configuration
  */
 export const useDeleteCollection = () => {
   const queryClient = useQueryClient();
@@ -188,7 +188,7 @@ export const useDeleteCollection = () => {
 
   return useMutation<void, Error, string>({
     mutationFn: async (collectionId: string) => {
-      await api.delete(`/api/load-tests/collections/${collectionId}`);
+      await api.delete(`/api/collections/${collectionId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collections'] });
@@ -211,7 +211,7 @@ export const useDeleteCollection = () => {
 };
 
 /**
- * Create a new load test run from a collection
+ * Create a new collection run from a collection
  */
 export const useCreateCollectionRun = () => {
   const queryClient = useQueryClient();
@@ -223,18 +223,18 @@ export const useCreateCollectionRun = () => {
     { collectionId: string; data: CreateCollectionRunRequest }
   >({
     mutationFn: async ({ collectionId, data }) => {
-      const response = await api.post(`/api/load-tests/collections/${collectionId}/runs`, data);
+      const response = await api.post(`/api/collections/${collectionId}/runs`, data);
       return response.data;
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['collections'] });
       queryClient.invalidateQueries({ queryKey: ['collection', variables.collectionId] });
-      queryClient.invalidateQueries({ queryKey: ['load-test-runs', variables.collectionId] });
-      queryClient.invalidateQueries({ queryKey: ['load-test-run', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['collection-runs', variables.collectionId] });
+      queryClient.invalidateQueries({ queryKey: ['collection-run', data.id] });
 
       toast({
         title: 'Test Started! 🚀',
-        description: 'Your load test run has been created and started.',
+        description: 'Your collection run has been created and started.',
       });
     },
     onError: (error: Error & { response?: { data?: { detail?: string } } }) => {
@@ -249,7 +249,7 @@ export const useCreateCollectionRun = () => {
 };
 
 /**
- * Manually trigger a load test run
+ * Manually trigger a collection run
  */
 export const useRunCollection = () => {
   const queryClient = useQueryClient();
@@ -257,13 +257,13 @@ export const useRunCollection = () => {
 
   return useMutation<CollectionRun, Error, string>({
     mutationFn: async (runId: string) => {
-      const response = await api.post(`/api/load-tests/runs/${runId}/run`);
+      const response = await api.post(`/api/collections/runs/${runId}/run`);
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['load-test-runs'] });
-      queryClient.invalidateQueries({ queryKey: ['load-test-run', data.id] });
-      queryClient.invalidateQueries({ queryKey: ['load-test-reports', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['collection-runs'] });
+      queryClient.invalidateQueries({ queryKey: ['collection-run', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['collection-reports', data.id] });
 
       toast({
         title: 'Test Started',
@@ -282,7 +282,7 @@ export const useRunCollection = () => {
 };
 
 /**
- * Delete a load test run
+ * Delete a collection run
  */
 export const useDeleteCollectionRun = () => {
   const queryClient = useQueryClient();
@@ -290,10 +290,10 @@ export const useDeleteCollectionRun = () => {
 
   return useMutation<void, Error, string>({
     mutationFn: async (runId: string) => {
-      await api.delete(`/api/load-tests/runs/${runId}`);
+      await api.delete(`/api/collections/runs/${runId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['load-test-runs'] });
+      queryClient.invalidateQueries({ queryKey: ['collection-runs'] });
       queryClient.invalidateQueries({ queryKey: ['collections'] });
 
       toast({
@@ -322,7 +322,7 @@ export const useCreateWebhook = () => {
 
   return useMutation<Webhook, Error, { collectionId: string; data: CreateWebhookRequest }>({
     mutationFn: async ({ collectionId, data }) => {
-      const response = await api.post(`/api/load-tests/collections/${collectionId}/webhooks`, data);
+      const response = await api.post(`/api/collections/${collectionId}/webhooks`, data);
       return response.data;
     },
     onSuccess: (data, variables) => {
@@ -355,7 +355,7 @@ export const useUpdateWebhook = () => {
 
   return useMutation<Webhook, Error, { webhookId: string; data: UpdateWebhookRequest }>({
     mutationFn: async ({ webhookId, data }) => {
-      const response = await api.put(`/api/load-tests/webhooks/${webhookId}`, data);
+      const response = await api.put(`/api/collections/webhooks/${webhookId}`, data);
       return response.data;
     },
     onSuccess: () => {
@@ -388,7 +388,7 @@ export const useDeleteWebhook = () => {
 
   return useMutation<void, Error, string>({
     mutationFn: async (webhookId: string) => {
-      await api.delete(`/api/load-tests/webhooks/${webhookId}`);
+      await api.delete(`/api/collections/webhooks/${webhookId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collections'] });
@@ -420,7 +420,7 @@ export const useReorderWebhooks = () => {
 
   return useMutation<void, Error, { collectionId: string; data: ReorderWebhooksRequest }>({
     mutationFn: async ({ collectionId, data }) => {
-      await api.patch(`/api/load-tests/collections/${collectionId}/webhooks/reorder`, data);
+      await api.patch(`/api/collections/${collectionId}/webhooks/reorder`, data);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['collection', variables.collectionId] });

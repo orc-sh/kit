@@ -1,13 +1,12 @@
+# CollectionConfiguration removed - replaced by Collection
+# from .collection_configurations import CollectionConfiguration  # noqa: F401
+from .collection_reports import CollectionReport  # noqa: F401
+from .collection_results import CollectionResult  # noqa: F401
+from .collection_runs import CollectionRun  # noqa: F401
 from .collections import Collection  # noqa: F401
 from .http_method import HttpMethod  # noqa: F401
 from .job_executions import JobExecution  # noqa: F401
 from .jobs import Job  # noqa: F401
-
-# LoadTestConfiguration removed - replaced by Collection
-# from .load_test_configurations import LoadTestConfiguration  # noqa: F401
-from .load_test_reports import LoadTestReport  # noqa: F401
-from .load_test_results import LoadTestResult  # noqa: F401
-from .load_test_runs import LoadTestRun  # noqa: F401
 from .notifications import Notification  # noqa: F401
 from .projects import Project  # noqa: F401
 from .subscriptions import Subscription  # noqa: F401

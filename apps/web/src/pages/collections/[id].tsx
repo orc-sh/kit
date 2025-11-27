@@ -8,8 +8,8 @@ import {
   useUpdateCollection,
   useCollectionRun,
   useCollectionReport,
-} from '@/hooks/use-load-tests';
-import { WebRequestList } from '@/components/load-tests/web-request-list';
+} from '@/hooks/use-collections';
+import { WebRequestList } from '@/components/collections/web-request-list';
 import { FadeIn } from '@/components/motion/fade-in';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,7 +51,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { UpdateCollectionRequest } from '@/types/load-test.types';
+import type { UpdateCollectionRequest } from '@/types/collection.types';
 
 const CollectionDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -152,7 +152,7 @@ const CollectionDetailsPage = () => {
     if (!id) return;
     try {
       await deleteConfig.mutateAsync(id);
-      navigate('/load-tests');
+      navigate('/collections');
     } catch (error) {
       // Error handled by hook
     }
@@ -224,7 +224,7 @@ const CollectionDetailsPage = () => {
           {/* Header */}
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/load-tests')}>
+              <Button variant="ghost" size="icon" onClick={() => navigate('/collections')}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
@@ -453,7 +453,7 @@ const CollectionDetailsPage = () => {
                 <Card className="rounded-xl border-border/50">
                   <CardContent className="p-8 text-center">
                     <p className="text-sm text-muted-foreground">
-                      No runs yet. Click "Run Test" to start a load test.
+                      No runs yet. Click "Run Test" to start a collection.
                     </p>
                   </CardContent>
                 </Card>
@@ -542,7 +542,7 @@ const CollectionDetailsPage = () => {
                           <div>
                             <h3 className="text-lg font-semibold mb-1">Test is Running</h3>
                             <p className="text-sm text-muted-foreground max-w-md">
-                              The load test is currently executing. Reports and metrics will appear
+                              The collection is currently executing. Reports and metrics will appear
                               here once the run completes.
                             </p>
                           </div>

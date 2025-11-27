@@ -25,7 +25,7 @@ class Collection(Base):
     webhooks = relationship(
         "Webhook", foreign_keys="Webhook.collection_id", back_populates="collection", cascade="all, delete-orphan"
     )
-    runs = relationship("LoadTestRun", back_populates="collection", cascade="all, delete-orphan")
+    runs = relationship("CollectionRun", back_populates="collection", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_collections_project_id", "project_id"),

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCreateCollection } from '@/hooks/use-load-tests';
+import { useCreateCollection } from '@/hooks/use-collections';
 import { FadeIn } from '@/components/motion/fade-in';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Gauge, Zap, ChevronDown } from 'lucide-react';
-import type { CreateCollectionRequest } from '@/types/load-test.types';
+import type { CreateCollectionRequest } from '@/types/collection.types';
 
 const NewCollectionPage = () => {
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ const NewCollectionPage = () => {
       };
 
       const result = await createConfig.mutateAsync(submitData);
-      navigate(`/load-tests/${result.id}`);
+      navigate(`/collections/${result.id}`);
     } catch (error) {
       // Error handled by hook
     }
@@ -96,7 +96,7 @@ const NewCollectionPage = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => navigate('/load-tests')}
+                    onClick={() => navigate('/collections')}
                     disabled={createConfig.isPending}
                     className="h-9"
                   >
@@ -129,7 +129,7 @@ const NewCollectionPage = () => {
                   <div className="space-y-3 text-sm text-muted-foreground">
                     <p>
                       Collections are groups of web requests that you can test together. Create a
-                      collection, add multiple web requests, and then run load tests with different
+                      collection, add multiple web requests, and then run collections with different
                       execution parameters.
                     </p>
                     <div className="space-y-2 mt-4">

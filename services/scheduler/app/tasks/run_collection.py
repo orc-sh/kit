@@ -1,7 +1,7 @@
 """
-Celery task for running load tests in the background.
+Celery task for running collections in the background.
 
-Handles load test execution, status updates, and error handling.
+Handles collection execution, status updates, and error handling.
 """
 
 import asyncio
@@ -23,11 +23,11 @@ logger = logging.getLogger(__name__)
 
 
 class RunCollectionTask(Task):
-    """Custom Celery task class for load test execution."""
+    """Custom Celery task class for collection execution."""
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         """Handle task failure."""
-        logger.error(f"Load test task {task_id} failed: {exc}", exc_info=einfo)
+        logger.error(f"Collection task {task_id} failed: {exc}", exc_info=einfo)
         if args and len(args) > 0:
             run_id = args[0]
             _update_collection_status(run_id, "failed", error=str(exc))
@@ -37,54 +37,54 @@ class RunCollectionTask(Task):
     bind=True,
     base=RunCollectionTask,
     acks_late=True,
-    max_retries=0,  # No automatic retries for load tests
-    time_limit=None,  # No hard timeout (load tests can run for hours)
+    max_retries=0,  # No automatic retries for collections
+    time_limit=None,  # No hard timeout (collections can run for hours)
     soft_time_limit=None,  # No soft timeout
 )
 def run_collection(self, run_id: str):
     """
-    Execute a load test run in the background.
+    Execute a collection run in the background.
 
     This task:
-    1. Loads the load test run from the database
-    2. Executes the load test asynchronously
+    1. Loads the collection run from the database
+    2. Executes the collection asynchronously
     3. Updates status and results in the database
     4. Handles errors and updates status accordingly
 
     Args:
-        run_id: Load test run ID
+        run_id: Collection run ID
     """
     db = _get_db_session()
     worker_id = self.request.hostname
 
     try:
-        # Get load test service
+        # Get collection service
         collection_service = get_collection_service(db)
 
-        # Check if load test run exists
+        # Check if collection run exists
         collection_run = collection_service.get_collection_run(run_id)
         if not collection_run:
-            logger.error(f"Load test run {run_id} not found")
+            logger.error(f"Collection run {run_id} not found")
             return
 
         # Update status to running if still pending
         if collection_run.status == "pending":
             collection_run.status = "running"
             db.commit()
-            logger.info(f"Starting load test run {run_id} (worker: {worker_id})")
+            logger.info(f"Starting collection run {run_id} (worker: {worker_id})")
 
-        # Run the async load test
+        # Run the async collection
         # Since Celery tasks are synchronous, we need to run the async function
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
             loop.run_until_complete(collection_service.run_collection(run_id))
-            logger.info(f"Load test run {run_id} completed successfully")
+            logger.info(f"Collection run {run_id} completed successfully")
         finally:
             loop.close()
 
     except Exception as e:
-        logger.error(f"Unexpected error executing load test {run_id}: {e}", exc_info=True)
+        logger.error(f"Unexpected error executing collection {run_id}: {e}", exc_info=True)
         _update_collection_status_in_db(db, run_id, "failed", error=str(e))
         db.commit()
     finally:
@@ -96,7 +96,7 @@ def _update_collection_status(
     status: str,
     error: Optional[str] = None,
 ):
-    """Update load test status (creates new DB session)."""
+    """Update collection status (creates new DB session)."""
     db = _get_db_session()
     try:
         _update_collection_status_in_db(db, run_id, status, error=error)
@@ -111,7 +111,7 @@ def _update_collection_status_in_db(
     status: str,
     error: Optional[str] = None,
 ):
-    """Update load test status in database."""
+    """Update collection status in database."""
     from datetime import datetime
 
     from app.models.collection_runs import CollectionRun
@@ -125,7 +125,7 @@ def _update_collection_status_in_db(
             if error:
                 # Since description was removed, we could log it or store in a separate error field
                 # For now, just log it
-                logger.error(f"Load test {run_id} failed: {error}")
+                logger.error(f"Collection {run_id} failed: {error}")
 
 
 def _get_db_session() -> Session:

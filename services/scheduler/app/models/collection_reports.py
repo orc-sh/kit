@@ -1,5 +1,5 @@
 """
-Load test report model for storing aggregated results/metrics for each run.
+Collection report model for storing aggregated results/metrics for each run.
 """
 
 from sqlalchemy import TIMESTAMP, Column, ForeignKey, Index, Integer, String, Text
@@ -9,11 +9,11 @@ from sqlalchemy.sql import func
 from .base import Base
 
 
-class LoadTestReport(Base):
-    __tablename__ = "load_test_reports"
+class CollectionReport(Base):
+    __tablename__ = "collection_reports"
 
     id = Column(String(36), primary_key=True)
-    load_test_run_id = Column(String(36), ForeignKey("load_test_runs.id", ondelete="CASCADE"), nullable=False)
+    collection_run_id = Column(String(36), ForeignKey("collection_runs.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=True)  # Optional report name
 
     # Results summary
@@ -34,10 +34,10 @@ class LoadTestReport(Base):
     updated_at = Column(TIMESTAMP, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
 
     # Relationships
-    run = relationship("LoadTestRun", back_populates="reports")
-    results = relationship("LoadTestResult", back_populates="report", cascade="all, delete-orphan")
+    run = relationship("CollectionRun", back_populates="reports")
+    results = relationship("CollectionResult", back_populates="report", cascade="all, delete-orphan")
 
     __table_args__ = (
-        Index("idx_load_test_reports_run_id", "load_test_run_id"),
-        Index("idx_load_test_reports_created_at", "created_at"),
+        Index("idx_collection_reports_run_id", "collection_run_id"),
+        Index("idx_collection_reports_created_at", "created_at"),
     )
