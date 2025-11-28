@@ -83,7 +83,7 @@ const SchedulesPage = () => {
                 Get started by creating your first scheduled webhook. Configure endpoints, set
                 schedules, and automate your workflows.
               </p>
-              <Button onClick={() => navigate('/add-new')} className="mt-6" size="lg">
+              <Button onClick={() => navigate('/schedules/new')} className="mt-6" size="lg">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Webhook
               </Button>
@@ -170,7 +170,7 @@ const SchedulesPage = () => {
                     <Card
                       key={webhook.id}
                       className="group rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm cursor-pointer"
-                      onClick={() => navigate(`/webhooks/${webhook.id}`)}
+                      onClick={() => navigate(`/schedules/${webhook.id}`)}
                     >
                       <CardContent className="flex items-center justify-between gap-6 p-4">
                         {/* Left Side - Information */}

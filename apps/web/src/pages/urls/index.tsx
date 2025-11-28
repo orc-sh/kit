@@ -133,7 +133,7 @@ const UrlsPage = () => {
                   <Card
                     key={url.id}
                     className="group rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm cursor-pointer"
-                    onClick={() => navigate(`/urls/${url.id}`)}
+                    onClick={() => navigate(`/endpoints/${url.id}`)}
                   >
                     <CardContent className="flex items-center justify-between gap-6 p-4">
                       {/* Left Side - Information */}

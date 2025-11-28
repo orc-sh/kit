@@ -53,8 +53,8 @@ const FloatingNavbar = () => {
     },
     {
       icon: Globe,
-      label: 'URLs',
-      path: '/urls',
+      label: 'Endpoints',
+      path: '/endpoints',
     },
     {
       icon: CalendarClock,
@@ -82,22 +82,21 @@ const FloatingNavbar = () => {
       <div className="fixed left-2 top-1/2 -translate-y-1/2 z-50">
         <nav className="bg-card/80 h-[calc(100vh-20px)] backdrop-blur-xl border border-border rounded-md shadow-2xl p-2 flex flex-col justify-between">
           <div className="flex flex-col items-center justify-center gap-4">
-            <div className="w-10 h-10 rounded-md bg-accent flex items-center justify-center">
-              <span className="text-primary font-black font-poppins">
-                <TreeDeciduous />
-              </span>
+            <div
+              onClick={() => navigate('/')}
+              className="w-10 h-10 cursor-pointer rounded-md bg-accent flex items-center justify-center"
+            >
+              <TreeDeciduous className="text-primary font-black font-poppins" />
             </div>
             <div className="border-t border-border w-full"></div>
             <ul className="flex flex-col gap-1.5 h-calc(100%-40px)">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                // For routes with detail pages (urls, collections), match exact path or subpaths
-                // For other routes, only match exactly
-                const routesWithSubPaths = ['/urls', '/collections'];
+                // Match based on URL prefix - for home route, match exactly, otherwise match prefix
                 const isActive =
-                  location.pathname === item.path ||
-                  (routesWithSubPaths.includes(item.path) &&
-                    location.pathname.startsWith(`${item.path}/`));
+                  item.path === '/'
+                    ? location.pathname === '/'
+                    : location.pathname.startsWith(item.path);
 
                 return (
                   <li key={item.path}>

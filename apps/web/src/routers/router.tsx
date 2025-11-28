@@ -39,11 +39,11 @@ export const AppRouter = () => {
       {/* Protected routes */}
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<DashboardPage />} />
-        <Route path="/urls" element={<UrlsPage />} />
+        <Route path="/endpoints" element={<UrlsPage />} />
+        <Route path="/endpoints/:id" element={<UrlDetailsPage />} />
         <Route path="/schedules" element={<SchedulesPage />} />
-        <Route path="/add-new" element={<AddNewPage />} />
-        <Route path="/webhooks/:id" element={<WebhookDetailsPage />} />
-        <Route path="/urls/:id" element={<UrlDetailsPage />} />
+        <Route path="/schedules/new" element={<AddNewPage />} />
+        <Route path="/schedules/:id" element={<WebhookDetailsPage />} />
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/collections/new" element={<NewCollectionPage />} />
         <Route path="/collections/:id" element={<CollectionDetailsPage />} />
