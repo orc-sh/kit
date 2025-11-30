@@ -72,10 +72,10 @@ class SubscriptionClient:
 
     def create_subscription(self, plan_id: str, customer_id: str) -> Dict:
         """
-        Create a subscription in Chargebee.
+        Create a subscription in Chargebee using Product Catalog 2.0 format.
 
         Args:
-            plan_id: Chargebee plan ID
+            plan_id: Chargebee item price ID (plan_id) - used as item_price_id in Product Catalog 2.0
             customer_id: Chargebee customer ID
 
         Returns:
@@ -85,10 +85,16 @@ class SubscriptionClient:
             ValueError: If subscription creation fails
         """
         try:
+            # Product Catalog 2.0 requires subscription_items with item_price_id
             subscription_result = chargebee.Subscription.create(
                 {
-                    "plan_id": plan_id,
                     "customer": {"id": customer_id},
+                    "subscription_items": [
+                        {
+                            "item_price_id": plan_id,
+                            "quantity": 1,
+                        }
+                    ],
                 }
             )
             cb_subscription = subscription_result.subscription  # type: ignore[attr-defined]
@@ -101,11 +107,11 @@ class SubscriptionClient:
 
     def update_subscription(self, chargebee_subscription_id: str, plan_id: Optional[str] = None) -> Dict:
         """
-        Update a subscription in Chargebee.
+        Update a subscription in Chargebee using Product Catalog 2.0 format.
 
         Args:
             chargebee_subscription_id: Chargebee subscription ID
-            plan_id: New plan ID (optional)
+            plan_id: New item price ID (plan_id) - used as item_price_id in Product Catalog 2.0 (optional)
 
         Returns:
             Updated Chargebee subscription object
@@ -114,14 +120,23 @@ class SubscriptionClient:
             ValueError: If update fails
         """
         try:
-            update_params = {}
-            if plan_id:
-                update_params["plan_id"] = plan_id
-
-            if not update_params:
+            if not plan_id:
                 raise ValueError("No update parameters provided")
 
-            result = chargebee.Subscription.update(chargebee_subscription_id, update_params)
+            # Product Catalog 2.0 requires update_for_items with subscription_items
+            # Replace the existing items with the new item_price_id
+            result = chargebee.Subscription.update_for_items(
+                chargebee_subscription_id,
+                {
+                    "subscription_items": [
+                        {
+                            "item_price_id": plan_id,
+                            "quantity": 1,
+                        }
+                    ],
+                    "replace_items_list": True,
+                },
+            )
             cb_subscription = result.subscription  # type: ignore[attr-defined]
             if not cb_subscription:
                 raise ValueError("Failed to update subscription in Chargebee")

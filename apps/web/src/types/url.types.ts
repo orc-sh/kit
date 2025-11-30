@@ -36,9 +36,7 @@ export interface UrlWithLogs extends Url {
   logs: UrlLog[];
 }
 
-export interface CreateUrlRequest {
-  account_id: string;
-}
+export interface CreateUrlRequest {}
 
 export interface PaginatedUrlResponse {
   data: Url[];

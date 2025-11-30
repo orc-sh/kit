@@ -5,9 +5,10 @@ URL controller for managing URL endpoints and logs.
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.constants.app_constants import DEFAULT_PROJECT_NAME
 from app.middleware.auth_middleware import get_current_user
 from app.models.user import User
-from app.schemas.request.url_schemas import CreateUrlRequest, UpdateUrlRequest
+from app.schemas.request.url_schemas import CreateUrlRequest
 from app.schemas.response.pagination_schemas import PaginatedResponse, PaginationMetadata
 from app.schemas.response.url_schemas import UrlLogResponse, UrlResponse, UrlWithLogsResponse
 from app.services.account_service import get_account_service
@@ -39,17 +40,11 @@ async def create_url(
     """
     # Verify account exists and belongs to user
     account_service = get_account_service(db)
-    account = account_service.get_account(account_id=request.account_id, user_id=user.id)
-
-    if not account:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Account with ID '{request.account_id}' not found",
-        )
+    account = account_service.get_or_create_account_by_name(user_id=user.id, account_name=DEFAULT_PROJECT_NAME)
 
     # Create URL
     url_service = get_url_service(db)
-    url = url_service.create_url(account_id=request.account_id)
+    url = url_service.create_url(account_id=str(account.id))
 
     # Build response with path
     url_dict = {
@@ -252,7 +247,7 @@ async def get_url_logs(
         UrlLogResponse(
             id=str(log.id),
             url_id=str(log.url_id),
-            method=log.method,
+            method=str(log.method),
             headers=log.headers,
             query_params=log.query_params,
             body=log.body,
@@ -276,80 +271,6 @@ async def get_url_logs(
         "logs": log_responses,
     }
     return UrlWithLogsResponse(**url_dict)
-
-
-@router.put("/{url_id}", response_model=UrlResponse)
-async def update_url(
-    url_id: str,
-    request: UpdateUrlRequest,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(client),
-):
-    """
-    Update an existing URL.
-
-    Args:
-        url_id: ID of the URL to update
-        request: URL update request
-        user: Current authenticated user
-        db: Database session
-
-    Returns:
-        Updated URL data
-
-    Raises:
-        HTTPException: 401 if not authenticated, 404 if URL not found
-    """
-    url_service = get_url_service(db)
-    url = url_service.get_url(url_id)
-
-    if not url:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"URL with ID '{url_id}' not found",
-        )
-
-    # Verify user has access through account
-    account_service = get_account_service(db)
-    account = account_service.get_account(str(url.account_id), user.id)
-
-    if not account:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to update this URL",
-        )
-
-    # If account_id is being updated, verify new account exists and belongs to user
-    if request.account_id and request.account_id != str(url.account_id):
-        new_account = account_service.get_account(account_id=request.account_id, user_id=user.id)
-        if not new_account:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Account with ID '{request.account_id}' not found",
-            )
-
-    # Update URL
-    updated_url = url_service.update_url(url_id, account_id=request.account_id)
-
-    if not updated_url:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"URL with ID '{url_id}' not found",
-        )
-
-    # Get updated account
-    updated_account = account_service.get_account(str(updated_url.account_id), user.id)
-
-    url_dict = {
-        "id": str(updated_url.id),
-        "account_id": str(updated_url.account_id),
-        "unique_identifier": updated_url.unique_identifier,
-        "path": f"/books/{updated_url.unique_identifier}",
-        "created_at": updated_url.created_at,
-        "updated_at": updated_url.updated_at,
-        "account": updated_account,
-    }
-    return UrlResponse(**url_dict)
 
 
 @router.delete("/{url_id}", status_code=status.HTTP_204_NO_CONTENT)
