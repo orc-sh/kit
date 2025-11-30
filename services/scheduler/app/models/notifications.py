@@ -1,5 +1,5 @@
 """
-Notification model for managing project notifications.
+Notification model for managing account notifications.
 """
 
 from sqlalchemy import TIMESTAMP, Column, Enum, ForeignKey, Index, String, Text
@@ -21,7 +21,7 @@ class Notification(Base):
     __tablename__ = "notifications"
 
     id = Column(String(36), primary_key=True)
-    project_id = Column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    account_id = Column(String(36), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(String(36), nullable=False)
     type = Column(
         Enum(
@@ -44,7 +44,7 @@ class Notification(Base):
     updated_at = Column(TIMESTAMP, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
 
     __table_args__ = (
-        Index("idx_notifications_project_id", "project_id"),
+        Index("idx_notifications_account_id", "account_id"),
         Index("idx_notifications_user_id", "user_id"),
         Index("idx_notifications_type", "type"),
     )

@@ -23,19 +23,19 @@ class UrlService:
         """
         self.db = db
 
-    def create_url(self, project_id: str) -> Url:
+    def create_url(self, account_id: str) -> Url:
         """
-        Create a new URL for a project.
+        Create a new URL for a account.
 
         Args:
-            project_id: ID of the project this URL belongs to
+            account_id: ID of the account this URL belongs to
 
         Returns:
             Created Url instance
         """
         url = Url(
             id=str(uuid.uuid4()),
-            project_id=project_id,
+            account_id=account_id,
             unique_identifier=Url.generate_unique_identifier(),
         )
         self.db.add(url)
@@ -67,17 +67,17 @@ class UrlService:
         """
         return self.db.query(Url).filter(Url.unique_identifier == unique_identifier).first()
 
-    def get_urls_by_project(self, project_id: str) -> List[Url]:
+    def get_urls_by_account(self, account_id: str) -> List[Url]:
         """
-        Get all URLs for a project.
+        Get all URLs for a account.
 
         Args:
-            project_id: ID of the project
+            account_id: ID of the account
 
         Returns:
             List of Url instances
         """
-        return self.db.query(Url).filter(Url.project_id == project_id).all()
+        return self.db.query(Url).filter(Url.account_id == account_id).all()
 
     def get_all_urls(self, limit: Optional[int] = None, offset: int = 0) -> List[Url]:
         """
@@ -97,13 +97,13 @@ class UrlService:
             query = query.offset(offset)
         return query.all()
 
-    def update_url(self, url_id: str, project_id: Optional[str] = None) -> Optional[Url]:
+    def update_url(self, url_id: str, account_id: Optional[str] = None) -> Optional[Url]:
         """
         Update a URL's properties.
 
         Args:
             url_id: ID of the URL to update
-            project_id: New project ID (optional)
+            account_id: New account ID (optional)
 
         Returns:
             Updated Url instance if found, None otherwise
@@ -112,8 +112,8 @@ class UrlService:
         if not url:
             return None
 
-        if project_id is not None:
-            url.project_id = project_id  # type: ignore[assignment]
+        if account_id is not None:
+            url.account_id = account_id  # type: ignore[assignment]
 
         self.db.commit()
         self.db.refresh(url)

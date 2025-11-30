@@ -26,7 +26,7 @@ export interface CreateCronWebhookRequest {
   webhook: CreateWebhookRequest;
 }
 
-export interface Project {
+export interface Account {
   id: string;
   user_id: string;
   name: string;
@@ -35,7 +35,7 @@ export interface Project {
 
 export interface Job {
   id: string;
-  project_id: string;
+  account_id: string;
   name: string;
   schedule: string;
   type: number;
@@ -62,7 +62,7 @@ export interface Webhook {
 }
 
 export interface CronWebhookResponse {
-  project: Project;
+  account: Account;
   job: Job;
   webhook: Webhook;
 }

@@ -27,7 +27,7 @@ class JobService:
 
     def create_job(
         self,
-        project_id: str,
+        account_id: str,
         name: str,
         schedule: str,
         job_type: int,
@@ -36,10 +36,10 @@ class JobService:
         user=None,  # Add user parameter
     ) -> Job:
         """
-        Create a new job for a project.
+        Create a new job for a account.
 
         Args:
-            project_id: ID of the project this job belongs to
+            account_id: ID of the account this job belongs to
             name: Name of the job
             schedule: Cron expression for scheduling
             job_type: Type identifier for the job
@@ -65,7 +65,7 @@ class JobService:
 
         job = Job(
             id=str(uuid.uuid4()),
-            project_id=project_id,
+            account_id=account_id,
             name=name,
             schedule=schedule,
             type=job_type,
@@ -90,19 +90,19 @@ class JobService:
         """
         return self.db.query(Job).filter(Job.id == job_id).first()
 
-    def get_jobs_by_project(self, project_id: str, skip: int = 0, limit: int = 100) -> List[Job]:
+    def get_jobs_by_account(self, account_id: str, skip: int = 0, limit: int = 100) -> List[Job]:
         """
-        Get all jobs for a project with pagination.
+        Get all jobs for a account with pagination.
 
         Args:
-            project_id: ID of the project
+            account_id: ID of the account
             skip: Number of records to skip (for pagination)
             limit: Maximum number of records to return
 
         Returns:
             List of Job instances
         """
-        return self.db.query(Job).filter(Job.project_id == project_id).offset(skip).limit(limit).all()
+        return self.db.query(Job).filter(Job.account_id == account_id).offset(skip).limit(limit).all()
 
     def update_job(
         self,

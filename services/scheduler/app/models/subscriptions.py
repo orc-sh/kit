@@ -1,5 +1,5 @@
 """
-Subscription model for managing project subscriptions via Chargebee.
+Subscription model for managing account subscriptions via Chargebee.
 """
 
 from sqlalchemy import TIMESTAMP, Column, ForeignKey, Index, String, Text
@@ -12,7 +12,7 @@ class Subscription(Base):
     __tablename__ = "subscriptions"
 
     id = Column(String(36), primary_key=True)
-    project_id = Column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, unique=True)
+    account_id = Column(String(36), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, unique=True)
     chargebee_subscription_id = Column(String(255), nullable=False, unique=True)
     chargebee_customer_id = Column(String(255), nullable=False)
     plan_id = Column(String(100), nullable=False)  # Chargebee plan ID
@@ -27,7 +27,7 @@ class Subscription(Base):
     updated_at = Column(TIMESTAMP, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
 
     __table_args__ = (
-        Index("idx_subscriptions_project_id", "project_id"),
+        Index("idx_subscriptions_account_id", "account_id"),
         Index("idx_subscriptions_chargebee_id", "chargebee_subscription_id"),
         Index("idx_subscriptions_status", "status"),
     )

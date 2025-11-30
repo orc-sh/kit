@@ -2,7 +2,7 @@ export type NotificationType = 'email' | 'slack' | 'discord' | 'webhook';
 
 export interface Notification {
   id: string;
-  project_id: string;
+  account_id: string;
   user_id: string;
   type: NotificationType;
   name: string;

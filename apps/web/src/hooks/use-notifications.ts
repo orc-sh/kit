@@ -10,13 +10,13 @@ import type {
 /**
  * Hook to fetch notifications with pagination
  */
-export const useNotifications = (page = 1, pageSize = 10, projectId?: string) => {
+export const useNotifications = (page = 1, pageSize = 10, accountId?: string) => {
   return useQuery({
-    queryKey: ['notifications', page, pageSize, projectId],
+    queryKey: ['notifications', page, pageSize, accountId],
     queryFn: async () => {
       const params: Record<string, string | number> = { page, page_size: pageSize };
-      if (projectId) {
-        params.project_id = projectId;
+      if (accountId) {
+        params.account_id = accountId;
       }
       const response = await api.get<NotificationsResponse>('/api/notifications', {
         params,

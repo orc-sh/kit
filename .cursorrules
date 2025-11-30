@@ -1,10 +1,10 @@
-# Cursor AI Rules for Scheduler Project
+# Cursor AI Rules for Scheduler Account
 
 ## Documentation Guidelines
 
 ### File Organization
 - **ALL documentation files (*.md) MUST be created inside the `docs/` folder**
-- Do NOT create documentation files in the project root unless explicitly requested
+- Do NOT create documentation files in the account root unless explicitly requested
 - Summary documents, API documentation, and implementation guides belong in `docs/`
 - Only keep essential files like README.md in the root
 
@@ -14,7 +14,7 @@
 - `docs/architecture/` - System architecture and design documents
 - `docs/testing/` - Testing strategies and test documentation
 
-## Project Structure
+## Account Structure
 
 ### Backend (FastAPI)
 - Controllers: `services/scheduler/app/controllers/`

@@ -1,8 +1,8 @@
+from .accounts import Account  # noqa: F401
 from .http_method import HttpMethod  # noqa: F401
 from .job_executions import JobExecution  # noqa: F401
 from .jobs import Job  # noqa: F401
 from .notifications import Notification  # noqa: F401
-from .projects import Project  # noqa: F401
 from .subscriptions import Subscription  # noqa: F401
 from .url_logs import UrlLog  # noqa: F401
 from .urls import Url  # noqa: F401

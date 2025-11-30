@@ -10,11 +10,42 @@ from app.middleware.auth_middleware import get_current_user
 from app.models.user import User
 from app.schemas.request.subscription_schemas import CancelSubscriptionRequest, UpdateSubscriptionRequest
 from app.schemas.response.subscription_schemas import SubscriptionResponse
-from app.services.project_service import get_project_service
+from app.services.account_service import get_account_service
 from app.services.subscription_service import get_subscription_service
 from db.client import client
 
 router = APIRouter()
+
+
+@router.get("", response_model=list[SubscriptionResponse])
+async def get_subscriptions(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(client),
+):
+    """
+    Get all subscriptions for the authenticated user.
+
+    Args:
+        user: Current authenticated user
+        db: Database session
+
+    Returns:
+        List of subscription data for the user
+
+    Raises:
+        HTTPException: 401 if not authenticated
+    """
+    try:
+        subscription_service = get_subscription_service(db)
+        subscriptions = subscription_service.get_subscriptions_by_user(user_id=user.id)
+
+        return [SubscriptionResponse.from_model(sub) for sub in subscriptions]
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch subscriptions: {str(e)}",
+        )
 
 
 @router.put("/{subscription_id}", response_model=SubscriptionResponse)
@@ -49,11 +80,11 @@ async def update_subscription(
                 detail=f"Subscription with ID '{subscription_id}' not found",
             )
 
-        # Verify user owns the project associated with this subscription
-        project_service = get_project_service(db)
-        project = project_service.get_project(project_id=subscription.project_id, user_id=user.id)
+        # Verify user owns the account associated with this subscription
+        account_service = get_account_service(db)
+        account = account_service.get_account(account_id=subscription.account_id, user_id=user.id)
 
-        if not project:
+        if not account:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to update this subscription",
@@ -119,11 +150,11 @@ async def cancel_subscription(
                 detail=f"Subscription with ID '{subscription_id}' not found",
             )
 
-        # Verify user owns the project associated with this subscription
-        project_service = get_project_service(db)
-        project = project_service.get_project(project_id=subscription.project_id, user_id=user.id)
+        # Verify user owns the account associated with this subscription
+        account_service = get_account_service(db)
+        account = account_service.get_account(account_id=subscription.account_id, user_id=user.id)
 
-        if not project:
+        if not account:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to cancel this subscription",

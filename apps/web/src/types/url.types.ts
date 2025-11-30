@@ -4,12 +4,12 @@
 
 export interface Url {
   id: string;
-  project_id: string;
+  account_id: string;
   unique_identifier: string;
   path: string;
   created_at: string;
   updated_at: string;
-  project?: {
+  account?: {
     id: string;
     user_id: string;
     name: string;
@@ -37,7 +37,7 @@ export interface UrlWithLogs extends Url {
 }
 
 export interface CreateUrlRequest {
-  project_id: string;
+  account_id: string;
 }
 
 export interface PaginatedUrlResponse {

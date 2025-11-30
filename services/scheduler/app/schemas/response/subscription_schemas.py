@@ -15,7 +15,7 @@ class SubscriptionResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "id": "sub_1234567890",
-                "project_id": "123e4567-e89b-12d3-a456-426614174000",
+                "account_id": "123e4567-e89b-12d3-a456-426614174000",
                 "chargebee_subscription_id": "sub_1234567890",
                 "chargebee_customer_id": "cust_1234567890",
                 "plan_id": "pro-plan",
@@ -32,7 +32,7 @@ class SubscriptionResponse(BaseModel):
     )
 
     id: str = Field(..., description="Subscription ID")
-    project_id: str = Field(..., description="Associated project ID")
+    account_id: str = Field(..., description="Associated account ID")
     chargebee_subscription_id: str = Field(..., description="Chargebee subscription ID")
     chargebee_customer_id: str = Field(..., description="Chargebee customer ID")
     plan_id: str = Field(..., description="Chargebee plan ID")
@@ -58,7 +58,7 @@ class SubscriptionResponse(BaseModel):
         """
         return cls(
             id=str(subscription.id),
-            project_id=str(subscription.project_id),
+            account_id=str(subscription.account_id),
             chargebee_subscription_id=subscription.chargebee_subscription_id,
             chargebee_customer_id=subscription.chargebee_customer_id,
             plan_id=subscription.plan_id,

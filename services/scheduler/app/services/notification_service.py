@@ -10,7 +10,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from app.models.notifications import Notification, NotificationType
-from app.services.project_service import get_project_service
+from app.services.account_service import get_account_service
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class NotificationService:
         config: dict,
     ) -> Notification:
         """
-        Create a new notification for a user's project.
+        Create a new notification for a user's account.
 
         Args:
             user_id: ID of the user creating the notification
@@ -49,18 +49,18 @@ class NotificationService:
             Created Notification instance
 
         Raises:
-            ValueError: If user has no projects or other validation fails
+            ValueError: If user has no accounts or other validation fails
         """
-        # Get user's first project (or create one if needed)
-        project_service = get_project_service(self.db)
-        projects = project_service.get_projects(user_id=user_id, skip=0, limit=1)
+        # Get user's first account (or create one if needed)
+        account_service = get_account_service(self.db)
+        accounts = account_service.get_accounts(user_id=user_id, skip=0, limit=1)
 
-        if not projects:
-            raise ValueError("User has no projects. Please create a project first.")
+        if not accounts:
+            raise ValueError("User has no accounts. Please create a account first.")
 
-        # Use the first project
-        project = projects[0]
-        project_id = project.id
+        # Use the first account
+        account = accounts[0]
+        account_id = account.id
 
         # Validate notification type
         if notification_type not in [
@@ -81,7 +81,7 @@ class NotificationService:
 
         notification = Notification(
             id=str(uuid.uuid4()),
-            project_id=project_id,
+            account_id=account_id,
             user_id=user_id,
             type=notification_type,
             name=name,
@@ -111,14 +111,14 @@ class NotificationService:
         )
 
     def get_notifications(
-        self, user_id: str, project_id: Optional[str] = None, skip: int = 0, limit: int = 100
+        self, user_id: str, account_id: Optional[str] = None, skip: int = 0, limit: int = 100
     ) -> List[Notification]:
         """
-        Get all notifications for a user, optionally filtered by project.
+        Get all notifications for a user, optionally filtered by account.
 
         Args:
             user_id: ID of the user
-            project_id: Optional project ID to filter by
+            account_id: Optional account ID to filter by
             skip: Number of records to skip (for pagination)
             limit: Maximum number of records to return
 
@@ -126,19 +126,19 @@ class NotificationService:
             List of Notification instances
         """
         query = self.db.query(Notification).filter(Notification.user_id == user_id)
-        if project_id:
-            query = query.filter(Notification.project_id == project_id)
+        if account_id:
+            query = query.filter(Notification.account_id == account_id)
         return query.offset(skip).limit(limit).all()
 
     def get_notifications_paginated(
-        self, user_id: str, project_id: Optional[str] = None, page: int = 1, page_size: int = 10
+        self, user_id: str, account_id: Optional[str] = None, page: int = 1, page_size: int = 10
     ) -> tuple[List[Notification], dict]:
         """
         Get all notifications for a user with page-based pagination and metadata.
 
         Args:
             user_id: ID of the user
-            project_id: Optional project ID to filter by
+            account_id: Optional account ID to filter by
             page: Page number (1-indexed)
             page_size: Number of records per page
 
@@ -151,8 +151,8 @@ class NotificationService:
 
         # Build query
         query = self.db.query(Notification).filter(Notification.user_id == user_id)
-        if project_id:
-            query = query.filter(Notification.project_id == project_id)
+        if account_id:
+            query = query.filter(Notification.account_id == account_id)
 
         # Get total count
         total_entries = query.count()
@@ -248,20 +248,20 @@ class NotificationService:
         self.db.commit()
         return True
 
-    def count_notifications(self, user_id: str, project_id: Optional[str] = None) -> int:
+    def count_notifications(self, user_id: str, account_id: Optional[str] = None) -> int:
         """
         Count the total number of notifications for a user.
 
         Args:
             user_id: ID of the user
-            project_id: Optional project ID to filter by
+            account_id: Optional account ID to filter by
 
         Returns:
             Total count of notifications
         """
         query = self.db.query(Notification).filter(Notification.user_id == user_id)
-        if project_id:
-            query = query.filter(Notification.project_id == project_id)
+        if account_id:
+            query = query.filter(Notification.account_id == account_id)
         return query.count()
 
     def _parse_config(self, notification: Notification) -> dict:

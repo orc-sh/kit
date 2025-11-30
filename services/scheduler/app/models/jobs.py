@@ -8,7 +8,7 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id = Column(String(36), primary_key=True)
-    project_id = Column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    account_id = Column(String(36), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
     schedule = Column(String(50), nullable=False)  # cron string
     type = Column(Integer, nullable=False)
@@ -20,7 +20,7 @@ class Job(Base):
     updated_at = Column(TIMESTAMP, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
 
     __table_args__ = (
-        Index("idx_jobs_project_id", "project_id"),
+        Index("idx_jobs_account_id", "account_id"),
         Index("idx_jobs_next_run_at", "next_run_at"),
         Index("idx_jobs_enabled", "enabled"),
     )

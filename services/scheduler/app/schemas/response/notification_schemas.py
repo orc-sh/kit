@@ -10,7 +10,7 @@ class NotificationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)  # Enables ORM mode for SQLAlchemy models
 
     id: str = Field(..., description="Notification unique identifier")
-    project_id: str = Field(..., description="Project ID the notification is associated with")
+    account_id: str = Field(..., description="Account ID the notification is associated with")
     user_id: str = Field(..., description="User ID who owns the notification")
     type: str = Field(..., description="Notification type (email, slack, discord, webhook)")
     name: str = Field(..., description="Notification channel name")

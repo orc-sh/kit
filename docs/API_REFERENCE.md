@@ -54,7 +54,7 @@ Content-Type: application/json
 **Request Body**:
 ```json
 {
-  "project_id": "uuid",
+  "account_id": "uuid",
   "name": "Daily Backup",
   "schedule": "0 2 * * *",
   "type": 1,
@@ -64,7 +64,7 @@ Content-Type: application/json
 ```
 
 **Fields**:
-- `project_id` (required): UUID of the project
+- `account_id` (required): UUID of the account
 - `name` (required): Job name (max 255 characters)
 - `schedule` (required): Cron expression (e.g., "0 2 * * *" for daily at 2 AM)
 - `type` (required): Job type identifier (integer)
@@ -75,7 +75,7 @@ Content-Type: application/json
 ```json
 {
   "id": "job-uuid",
-  "project_id": "project-uuid",
+  "account_id": "account-uuid",
   "name": "Daily Backup",
   "schedule": "0 2 * * *",
   "type": 1,
@@ -91,7 +91,7 @@ Content-Type: application/json
 **Errors**:
 - `400 Bad Request`: Invalid cron expression or validation error
 - `401 Unauthorized`: Missing or invalid token
-- `403 Forbidden`: User doesn't have access to project
+- `403 Forbidden`: User doesn't have access to account
 
 **Example**:
 ```bash
@@ -99,7 +99,7 @@ curl -X POST http://localhost:8000/api/jobs \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "project_id": "123e4567-e89b-12d3-a456-426614174000",
+    "account_id": "123e4567-e89b-12d3-a456-426614174000",
     "name": "Daily Backup",
     "schedule": "0 2 * * *",
     "type": 1
@@ -121,7 +121,7 @@ Authorization: Bearer <token>
 ```json
 {
   "id": "job-uuid",
-  "project_id": "project-uuid",
+  "account_id": "account-uuid",
   "name": "Daily Backup",
   "schedule": "0 2 * * *",
   "type": 1,
@@ -147,7 +147,7 @@ curl http://localhost:8000/api/jobs/job-uuid \
 
 ### List Jobs
 
-List all jobs for a project with pagination.
+List all jobs for a account with pagination.
 
 **Endpoint**: `GET /api/jobs`
 
@@ -157,7 +157,7 @@ Authorization: Bearer <token>
 ```
 
 **Query Parameters**:
-- `project_id` (required): UUID of the project
+- `account_id` (required): UUID of the account
 - `skip` (optional): Number of records to skip (default: 0)
 - `limit` (optional): Maximum number of records (default: 100, max: 1000)
 - `enabled` (optional): Filter by enabled status (true/false)
@@ -168,7 +168,7 @@ Authorization: Bearer <token>
   "items": [
     {
       "id": "job-uuid-1",
-      "project_id": "project-uuid",
+      "account_id": "account-uuid",
       "name": "Daily Backup",
       "schedule": "0 2 * * *",
       "type": 1,
@@ -177,7 +177,7 @@ Authorization: Bearer <token>
     },
     {
       "id": "job-uuid-2",
-      "project_id": "project-uuid",
+      "account_id": "account-uuid",
       "name": "Hourly Sync",
       "schedule": "0 * * * *",
       "type": 1,
@@ -193,7 +193,7 @@ Authorization: Bearer <token>
 
 **Example**:
 ```bash
-curl "http://localhost:8000/api/jobs?project_id=project-uuid&limit=50" \
+curl "http://localhost:8000/api/jobs?account_id=account-uuid&limit=50" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -224,7 +224,7 @@ Content-Type: application/json
 ```json
 {
   "id": "job-uuid",
-  "project_id": "project-uuid",
+  "account_id": "account-uuid",
   "name": "Updated Job Name",
   "schedule": "0 3 * * *",
   "type": 2,
@@ -666,7 +666,7 @@ response = httpx.post(
     f"{BASE_URL}/api/jobs",
     headers=headers,
     json={
-        "project_id": "project-uuid",
+        "account_id": "account-uuid",
         "name": "Daily Backup",
         "schedule": "0 2 * * *",
         "type": 1
@@ -717,7 +717,7 @@ const jobResponse = await fetch(`${BASE_URL}/api/jobs`, {
   method: 'POST',
   headers,
   body: JSON.stringify({
-    project_id: 'project-uuid',
+    account_id: 'account-uuid',
     name: 'Daily Backup',
     schedule: '0 2 * * *',
     type: 1
@@ -764,7 +764,7 @@ JOB_ID=$(curl -s -X POST "$BASE_URL/api/jobs" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "project_id": "project-uuid",
+    "account_id": "account-uuid",
     "name": "Daily Backup",
     "schedule": "0 2 * * *",
     "type": 1

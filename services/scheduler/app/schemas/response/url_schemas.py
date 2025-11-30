@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.response.project_schemas import ProjectResponse
+from app.schemas.response.account_schemas import AccountResponse
 
 
 class UrlResponse(BaseModel):
@@ -18,7 +18,7 @@ class UrlResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174002",
-                "project_id": "123e4567-e89b-12d3-a456-426614174001",
+                "account_id": "123e4567-e89b-12d3-a456-426614174001",
                 "unique_identifier": "abc123xyz",
                 "path": "/api/webhooks/abc123xyz",
                 "created_at": "2024-01-01T00:00:00",
@@ -28,12 +28,12 @@ class UrlResponse(BaseModel):
     )
 
     id: str = Field(..., description="URL ID")
-    project_id: str = Field(..., description="Project ID this URL belongs to")
+    account_id: str = Field(..., description="Account ID this URL belongs to")
     unique_identifier: str = Field(..., description="Unique identifier for the URL")
     path: str = Field(..., description="Full path to access this URL")
     created_at: datetime = Field(..., description="When the URL was created")
     updated_at: datetime = Field(..., description="When the URL was last updated")
-    project: Optional[ProjectResponse] = Field(None, description="Associated project information")
+    account: Optional[AccountResponse] = Field(None, description="Associated account information")
 
 
 class UrlLogResponse(BaseModel):
@@ -80,7 +80,7 @@ class UrlWithLogsResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174002",
-                "project_id": "123e4567-e89b-12d3-a456-426614174001",
+                "account_id": "123e4567-e89b-12d3-a456-426614174001",
                 "unique_identifier": "abc123xyz",
                 "path": "/api/webhooks/abc123xyz",
                 "created_at": "2024-01-01T00:00:00",
@@ -99,7 +99,7 @@ class UrlWithLogsResponse(BaseModel):
     )
 
     id: str = Field(..., description="URL ID")
-    project_id: str = Field(..., description="Project ID this URL belongs to")
+    account_id: str = Field(..., description="Account ID this URL belongs to")
     unique_identifier: str = Field(..., description="Unique identifier for the URL")
     path: str = Field(..., description="Full path to access this URL")
     created_at: datetime = Field(..., description="When the URL was created")

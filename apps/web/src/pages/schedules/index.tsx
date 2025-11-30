@@ -81,7 +81,7 @@ const SchedulesPage = () => {
                   <Hammer className="h-4 w-4" />
                   Expression Builder
                 </Button>
-                <Button size="sm" onClick={() => navigate('/add-new')} className="w-20 gap-2">
+                <Button size="sm" onClick={() => navigate('/schedules/new')} className="w-20 gap-2">
                   Create
                 </Button>
               </div>

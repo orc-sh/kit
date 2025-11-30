@@ -9,7 +9,7 @@ def init():
 
 
 def get_supabase_url() -> str:
-    """Get Supabase project URL from environment"""
+    """Get Supabase account URL from environment"""
     url = os.getenv("SUPABASE_PROJECT_URL")
     if not url:
         raise ValueError("SUPABASE_PROJECT_URL environment variable is not set")

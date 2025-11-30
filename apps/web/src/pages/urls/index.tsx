@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUrls, useCreateUrl } from '@/hooks/use-urls';
-import { useProjects, useCreateProject } from '@/hooks/use-projects';
+import { useAccounts, useCreateAccount } from '@/hooks/use-accounts';
 import { FadeIn } from '@/components/motion/fade-in';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,27 +16,27 @@ const UrlsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  // Fetch projects to get the first one for creating URLs
-  const { data: projectsData } = useProjects(1, 1);
-  const firstProject = projectsData?.data?.[0];
+  // Fetch accounts to get the first one for creating URLs
+  const { data: accountsData } = useAccounts(1, 1);
+  const firstAccount = accountsData?.data?.[0];
 
   // Fetch URLs
   const { data: urlsData, isLoading, isError } = useUrls(currentPage, pageSize);
   const createUrl = useCreateUrl();
-  const createProject = useCreateProject();
+  const createAccount = useCreateAccount();
 
   const handleCreateUrl = async () => {
     try {
-      let projectId = firstProject?.id;
+      let accountId = firstAccount?.id;
 
-      // If no project exists, create one first
-      if (!projectId) {
-        const newProject = await createProject.mutateAsync({ name: 'Default Project' });
-        projectId = newProject.id;
+      // If no account exists, create one first
+      if (!accountId) {
+        const newAccount = await createAccount.mutateAsync({ name: 'Default Account' });
+        accountId = newAccount.id;
       }
 
-      // Create URL with the project ID
-      await createUrl.mutateAsync({ project_id: projectId });
+      // Create URL with the account ID
+      await createUrl.mutateAsync({ account_id: accountId });
     } catch (error) {
       // Error is handled by the hooks
     }
@@ -70,7 +70,7 @@ const UrlsPage = () => {
             </div>
             <Button
               onClick={handleCreateUrl}
-              disabled={createUrl.isPending || createProject.isPending}
+              disabled={createUrl.isPending || createAccount.isPending}
             >
               Create
             </Button>
@@ -117,7 +117,7 @@ const UrlsPage = () => {
                 onClick={handleCreateUrl}
                 className="mt-6"
                 size="lg"
-                disabled={createUrl.isPending || createProject.isPending}
+                disabled={createUrl.isPending || createAccount.isPending}
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Create Endpoint

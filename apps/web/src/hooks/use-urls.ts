@@ -10,13 +10,13 @@ import type { CreateUrlRequest, Url, UrlWithLogs, PaginatedUrlResponse } from '@
 /**
  * Fetch all URLs with pagination
  */
-export const useUrls = (page: number = 1, pageSize: number = 10, projectId?: string) => {
+export const useUrls = (page: number = 1, pageSize: number = 10, accountId?: string) => {
   return useQuery<PaginatedUrlResponse, Error>({
-    queryKey: ['urls', page, pageSize, projectId],
+    queryKey: ['urls', page, pageSize, accountId],
     queryFn: async () => {
       const params: Record<string, string | number> = { page, page_size: pageSize };
-      if (projectId) {
-        params.project_id = projectId;
+      if (accountId) {
+        params.account_id = accountId;
       }
       const response = await api.get('/api/urls', { params });
       return response.data;

@@ -13,12 +13,12 @@ class CreateUrlRequest(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "project_id": "123e4567-e89b-12d3-a456-426614174001",
+                "account_id": "123e4567-e89b-12d3-a456-426614174001",
             }
         }
     )
 
-    project_id: str = Field(..., description="Project ID to associate the URL with", min_length=1)
+    account_id: str = Field(..., description="Account ID to associate the URL with", min_length=1)
 
 
 class UpdateUrlRequest(BaseModel):
@@ -27,9 +27,9 @@ class UpdateUrlRequest(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "project_id": "123e4567-e89b-12d3-a456-426614174001",
+                "account_id": "123e4567-e89b-12d3-a456-426614174001",
             }
         }
     )
 
-    project_id: Optional[str] = Field(None, description="Project ID to associate the URL with", min_length=1)
+    account_id: Optional[str] = Field(None, description="Account ID to associate the URL with", min_length=1)

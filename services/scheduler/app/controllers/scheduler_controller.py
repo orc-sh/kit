@@ -9,8 +9,8 @@ from app.middleware.auth_middleware import get_current_user
 from app.models.user import User
 from app.schemas.request.webhook_schemas import CreateCronWebhookRequest, UpdateWebhookRequest
 from app.schemas.response.webhook_schemas import CronWebhookResponse, WebhookResponse
+from app.services.account_service import get_account_service
 from app.services.job_service import get_job_service
-from app.services.project_service import get_project_service
 from app.services.webhook_service import get_webhook_service
 from db.client import client
 
@@ -24,12 +24,12 @@ async def create_cron_webhook(
     db: Session = Depends(client),
 ):
     """
-    Create a webhook with associated job and project via Cron integration.
+    Create a webhook with associated job and account via Cron integration.
 
     This endpoint:
-    1. Uses the authenticated user's name as the project name
-    2. Gets or creates a project with that name
-    3. Creates a job linked to the project
+    1. Uses the authenticated user's name as the account name
+    2. Gets or creates a account with that name
+    3. Creates a job linked to the account
     4. Creates a webhook linked to the job
 
     Args:
@@ -38,20 +38,20 @@ async def create_cron_webhook(
         db: Database session
 
     Returns:
-        Combined response with project, job, and webhook data
+        Combined response with account, job, and webhook data
 
     Raises:
         HTTPException: 401 if not authenticated, 400 if validation fails
     """
     try:
-        # Step 1: Get or create project using user's name (automatically creates subscription)
-        project_service = get_project_service(db)
-        project = project_service.get_or_create_project_by_name(user_id=user.id, project_name=user.name, user=user)
+        # Step 1: Get or create account using user's name (automatically creates subscription)
+        account_service = get_account_service(db)
+        account = account_service.get_or_create_account_by_name(user_id=user.id, account_name=user.name, user=user)
 
-        # Step 2: Create job for the project
+        # Step 2: Create job for the account
         job_service = get_job_service(db)
         job = job_service.create_job(
-            project_id=str(project.id),
+            account_id=str(account.id),
             name=request.job.name,
             schedule=request.job.schedule,
             job_type=request.job.type,
@@ -74,7 +74,7 @@ async def create_cron_webhook(
 
         # Return combined response
         return CronWebhookResponse(
-            project=project,
+            account=account,
             job=job,
             webhook=webhook,
         )
@@ -123,7 +123,7 @@ async def get_webhook(
                 detail=f"Webhook with ID {webhook_id} not found",
             )
 
-        # Verify user has access to this webhook (through job and project)
+        # Verify user has access to this webhook (through job and account)
         job_service = get_job_service(db)
         job = job_service.get_job(str(webhook.job_id))
         if not job:
@@ -132,9 +132,9 @@ async def get_webhook(
                 detail="Associated job not found",
             )
 
-        project_service = get_project_service(db)
-        project = project_service.get_project(str(job.project_id), user.id)
-        if not project:
+        account_service = get_account_service(db)
+        account = account_service.get_account(str(job.account_id), user.id)
+        if not account:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to access this webhook",
@@ -177,7 +177,7 @@ async def get_all_webhooks(
     """
     Get all webhooks for the authenticated user.
 
-    This endpoint returns all webhooks that belong to jobs in the user's projects.
+    This endpoint returns all webhooks that belong to jobs in the user's accounts.
 
     Args:
         user: Current authenticated user (automatically extracted from JWT)
@@ -192,18 +192,18 @@ async def get_all_webhooks(
         HTTPException: 401 if not authenticated
     """
     try:
-        # Get all projects for the user
-        project_service = get_project_service(db)
-        projects = project_service.get_projects(user.id)
+        # Get all accounts for the user
+        account_service = get_account_service(db)
+        accounts = account_service.get_accounts(user.id)
 
-        # Get all jobs for these projects
+        # Get all jobs for these accounts
         job_service = get_job_service(db)
         webhook_service = get_webhook_service(db)
         all_webhooks = []
 
-        for project in projects:
-            project_id = str(project.id)
-            jobs = job_service.get_jobs_by_project(project_id)
+        for account in accounts:
+            account_id = str(account.id)
+            jobs = job_service.get_jobs_by_account(account_id)
             for job in jobs:
                 job_id = str(job.id)
                 webhooks = webhook_service.get_webhooks_by_job(job_id)
@@ -268,7 +268,7 @@ async def update_webhook(
                 detail=f"Webhook with ID {webhook_id} not found",
             )
 
-        # Verify user has access to this webhook (through job and project)
+        # Verify user has access to this webhook (through job and account)
         job_service = get_job_service(db)
         job = job_service.get_job(str(webhook.job_id))
         if not job:
@@ -277,9 +277,9 @@ async def update_webhook(
                 detail="Associated job not found",
             )
 
-        project_service = get_project_service(db)
-        project = project_service.get_project(str(job.project_id), user.id)
-        if not project:
+        account_service = get_account_service(db)
+        account = account_service.get_account(str(job.account_id), user.id)
+        if not account:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to update this webhook",
@@ -370,7 +370,7 @@ async def delete_webhook(
                 detail=f"Webhook with ID {webhook_id} not found",
             )
 
-        # Verify user has access to this webhook (through job and project)
+        # Verify user has access to this webhook (through job and account)
         job_service = get_job_service(db)
         job = job_service.get_job(str(webhook.job_id))
         if not job:
@@ -379,9 +379,9 @@ async def delete_webhook(
                 detail="Associated job not found",
             )
 
-        project_service = get_project_service(db)
-        project = project_service.get_project(str(job.project_id), user.id)
-        if not project:
+        account_service = get_account_service(db)
+        account = account_service.get_account(str(job.account_id), user.id)
+        if not account:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to delete this webhook",

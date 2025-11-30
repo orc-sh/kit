@@ -1,4 +1,4 @@
-export interface Project {
+export interface Account {
   id: string;
   name: string;
   user_id: string;
@@ -16,15 +16,15 @@ export interface PaginationMetadata {
   has_previous: boolean;
 }
 
-export interface ProjectsResponse {
-  data: Project[];
+export interface AccountsResponse {
+  data: Account[];
   pagination: PaginationMetadata;
 }
 
-export interface CreateProjectRequest {
+export interface CreateAccountRequest {
   name: string;
 }
 
-export interface UpdateProjectRequest {
+export interface UpdateAccountRequest {
   name: string;
 }

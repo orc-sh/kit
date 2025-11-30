@@ -10,7 +10,7 @@ from app.models.user import User
 from app.schemas.request.url_schemas import CreateUrlRequest, UpdateUrlRequest
 from app.schemas.response.pagination_schemas import PaginatedResponse, PaginationMetadata
 from app.schemas.response.url_schemas import UrlLogResponse, UrlResponse, UrlWithLogsResponse
-from app.services.project_service import get_project_service
+from app.services.account_service import get_account_service
 from app.services.url_service import get_url_service
 from db.client import client
 
@@ -24,10 +24,10 @@ async def create_url(
     db: Session = Depends(client),
 ):
     """
-    Create a new URL for the authenticated user's project.
+    Create a new URL for the authenticated user's account.
 
     Args:
-        request: URL creation request with project_id
+        request: URL creation request with account_id
         user: Current authenticated user
         db: Database session
 
@@ -35,31 +35,31 @@ async def create_url(
         Created URL data with path
 
     Raises:
-        HTTPException: 401 if not authenticated, 404 if project not found
+        HTTPException: 401 if not authenticated, 404 if account not found
     """
-    # Verify project exists and belongs to user
-    project_service = get_project_service(db)
-    project = project_service.get_project(project_id=request.project_id, user_id=user.id)
+    # Verify account exists and belongs to user
+    account_service = get_account_service(db)
+    account = account_service.get_account(account_id=request.account_id, user_id=user.id)
 
-    if not project:
+    if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Project with ID '{request.project_id}' not found",
+            detail=f"Account with ID '{request.account_id}' not found",
         )
 
     # Create URL
     url_service = get_url_service(db)
-    url = url_service.create_url(project_id=request.project_id)
+    url = url_service.create_url(account_id=request.account_id)
 
     # Build response with path
     url_dict = {
         "id": str(url.id),
-        "project_id": str(url.project_id),
+        "account_id": str(url.account_id),
         "unique_identifier": url.unique_identifier,
         "path": f"/api/webhooks/{url.unique_identifier}",
         "created_at": url.created_at,
         "updated_at": url.updated_at,
-        "project": project,
+        "account": account,
     }
     return UrlResponse(**url_dict)
 
@@ -68,7 +68,7 @@ async def create_url(
 async def get_urls(
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page (max: 100)"),
-    project_id: str = Query(None, description="Filter by project ID"),
+    account_id: str = Query(None, description="Filter by account ID"),
     user: User = Depends(get_current_user),
     db: Session = Depends(client),
 ):
@@ -78,7 +78,7 @@ async def get_urls(
     Args:
         page: Page number (default: 1, min: 1)
         page_size: Number of items per page (default: 10, max: 100)
-        project_id: Optional project ID filter
+        account_id: Optional account ID filter
         user: Current authenticated user
         db: Database session
 
@@ -89,25 +89,25 @@ async def get_urls(
         HTTPException: 401 if not authenticated
     """
     url_service = get_url_service(db)
-    project_service = get_project_service(db)
+    account_service = get_account_service(db)
 
-    # Get all user's projects
-    projects = project_service.get_projects(user.id)
-    project_ids = [str(p.id) for p in projects]
+    # Get all user's accounts
+    accounts = account_service.get_accounts(user.id)
+    account_ids = [str(p.id) for p in accounts]
 
-    # Filter by project_id if provided
-    if project_id:
-        if project_id not in project_ids:
+    # Filter by account_id if provided
+    if account_id:
+        if account_id not in account_ids:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Project with ID '{project_id}' not found",
+                detail=f"Account with ID '{account_id}' not found",
             )
-        project_ids = [project_id]
+        account_ids = [account_id]
 
-    # Get URLs for these projects
+    # Get URLs for these accounts
     all_urls = []
-    for pid in project_ids:
-        urls = url_service.get_urls_by_project(pid)
+    for pid in account_ids:
+        urls = url_service.get_urls_by_account(pid)
         all_urls.extend(urls)
 
     # Pagination
@@ -120,15 +120,15 @@ async def get_urls(
     # Build responses
     url_responses = []
     for url in paginated_urls:
-        project = project_service.get_project(str(url.project_id), user.id)
+        account = account_service.get_account(str(url.account_id), user.id)
         url_dict = {
             "id": str(url.id),
-            "project_id": str(url.project_id),
+            "account_id": str(url.account_id),
             "unique_identifier": url.unique_identifier,
             "path": f"/api/webhooks/{url.unique_identifier}",
             "created_at": url.created_at,
             "updated_at": url.updated_at,
-            "project": project,
+            "account": account,
         }
         url_responses.append(UrlResponse(**url_dict))
 
@@ -178,11 +178,11 @@ async def get_url(
             detail=f"URL with ID '{url_id}' not found",
         )
 
-    # Verify user has access through project
-    project_service = get_project_service(db)
-    project = project_service.get_project(str(url.project_id), user.id)
+    # Verify user has access through account
+    account_service = get_account_service(db)
+    account = account_service.get_account(str(url.account_id), user.id)
 
-    if not project:
+    if not account:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to access this URL",
@@ -190,12 +190,12 @@ async def get_url(
 
     url_dict = {
         "id": str(url.id),
-        "project_id": str(url.project_id),
+        "account_id": str(url.account_id),
         "unique_identifier": url.unique_identifier,
         "path": f"/api/webhooks/{url.unique_identifier}",
         "created_at": url.created_at,
         "updated_at": url.updated_at,
-        "project": project,
+        "account": account,
     }
     return UrlResponse(**url_dict)
 
@@ -233,11 +233,11 @@ async def get_url_logs(
             detail=f"URL with ID '{url_id}' not found",
         )
 
-    # Verify user has access through project
-    project_service = get_project_service(db)
-    project = project_service.get_project(str(url.project_id), user.id)
+    # Verify user has access through account
+    account_service = get_account_service(db)
+    account = account_service.get_account(str(url.account_id), user.id)
 
-    if not project:
+    if not account:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to access this URL",
@@ -268,7 +268,7 @@ async def get_url_logs(
 
     url_dict = {
         "id": str(url.id),
-        "project_id": str(url.project_id),
+        "account_id": str(url.account_id),
         "unique_identifier": url.unique_identifier,
         "path": f"/api/webhooks/{url.unique_identifier}",
         "created_at": url.created_at,
@@ -309,27 +309,27 @@ async def update_url(
             detail=f"URL with ID '{url_id}' not found",
         )
 
-    # Verify user has access through project
-    project_service = get_project_service(db)
-    project = project_service.get_project(str(url.project_id), user.id)
+    # Verify user has access through account
+    account_service = get_account_service(db)
+    account = account_service.get_account(str(url.account_id), user.id)
 
-    if not project:
+    if not account:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to update this URL",
         )
 
-    # If project_id is being updated, verify new project exists and belongs to user
-    if request.project_id and request.project_id != str(url.project_id):
-        new_project = project_service.get_project(project_id=request.project_id, user_id=user.id)
-        if not new_project:
+    # If account_id is being updated, verify new account exists and belongs to user
+    if request.account_id and request.account_id != str(url.account_id):
+        new_account = account_service.get_account(account_id=request.account_id, user_id=user.id)
+        if not new_account:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Project with ID '{request.project_id}' not found",
+                detail=f"Account with ID '{request.account_id}' not found",
             )
 
     # Update URL
-    updated_url = url_service.update_url(url_id, project_id=request.project_id)
+    updated_url = url_service.update_url(url_id, account_id=request.account_id)
 
     if not updated_url:
         raise HTTPException(
@@ -337,17 +337,17 @@ async def update_url(
             detail=f"URL with ID '{url_id}' not found",
         )
 
-    # Get updated project
-    updated_project = project_service.get_project(str(updated_url.project_id), user.id)
+    # Get updated account
+    updated_account = account_service.get_account(str(updated_url.account_id), user.id)
 
     url_dict = {
         "id": str(updated_url.id),
-        "project_id": str(updated_url.project_id),
+        "account_id": str(updated_url.account_id),
         "unique_identifier": updated_url.unique_identifier,
         "path": f"/books/{updated_url.unique_identifier}",
         "created_at": updated_url.created_at,
         "updated_at": updated_url.updated_at,
-        "project": updated_project,
+        "account": updated_account,
     }
     return UrlResponse(**url_dict)
 
@@ -381,11 +381,11 @@ async def delete_url(
             detail=f"URL with ID '{url_id}' not found",
         )
 
-    # Verify user has access through project
-    project_service = get_project_service(db)
-    project = project_service.get_project(str(url.project_id), user.id)
+    # Verify user has access through account
+    account_service = get_account_service(db)
+    account = account_service.get_account(str(url.account_id), user.id)
 
-    if not project:
+    if not account:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to delete this URL",

@@ -251,7 +251,7 @@ The Scheduler is a distributed system for scheduling and executing webhook-based
 
 ```python
 id: UUID (Primary Key)
-project_id: UUID (Foreign Key → projects.id)
+account_id: UUID (Foreign Key → accounts.id)
 name: String(255)
 schedule: String(50)  # Cron expression (e.g., "0 2 * * *")
 type: Integer  # Job type identifier
@@ -264,7 +264,7 @@ updated_at: TIMESTAMP
 ```
 
 **Indexes**:
-- `idx_jobs_project_id` on `project_id`
+- `idx_jobs_account_id` on `account_id`
 - `idx_jobs_next_run_at` on `next_run_at`
 - `idx_jobs_enabled` on `enabled`
 

@@ -11,7 +11,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.services.job_service import JobService, get_job_service
-from tests.factories import JobFactory, ProjectFactory
+from tests.factories import AccountFactory, JobFactory
 
 
 @pytest.mark.unit
@@ -20,11 +20,11 @@ class TestJobServiceCreate:
 
     def test_create_job_success(self, db_session: Session, test_user):
         """Test creating a job successfully."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
         service = JobService(db_session)
 
         job = service.create_job(
-            project_id=project.id,
+            account_id=account.id,
             name="My New Job",
             schedule="0 9 * * *",
             job_type=1,
@@ -33,7 +33,7 @@ class TestJobServiceCreate:
         )
 
         assert job.id is not None
-        assert job.project_id == project.id
+        assert job.account_id == account.id
         assert job.name == "My New Job"
         assert job.schedule == "0 9 * * *"
         assert job.type == 1
@@ -44,11 +44,11 @@ class TestJobServiceCreate:
 
     def test_create_job_generates_uuid(self, db_session: Session, test_user):
         """Test that job ID is auto-generated as UUID."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
         service = JobService(db_session)
 
         job = service.create_job(
-            project_id=project.id,
+            account_id=account.id,
             name="Test Job",
             schedule="0 9 * * *",
             job_type=1,
@@ -60,12 +60,12 @@ class TestJobServiceCreate:
 
     def test_create_job_calculates_next_run(self, db_session: Session, test_user):
         """Test that next_run_at is calculated from cron schedule."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
         service = JobService(db_session)
 
         before = datetime.now()
         job = service.create_job(
-            project_id=project.id,
+            account_id=account.id,
             name="Test Job",
             schedule="0 9 * * *",
             job_type=1,
@@ -76,12 +76,12 @@ class TestJobServiceCreate:
 
     def test_create_job_invalid_cron_schedule(self, db_session: Session, test_user):
         """Test that invalid cron schedule raises ValueError."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
         service = JobService(db_session)
 
         with pytest.raises(ValueError, match="Invalid cron schedule"):
             service.create_job(
-                project_id=project.id,
+                account_id=account.id,
                 name="Test Job",
                 schedule="invalid cron",
                 job_type=1,
@@ -89,11 +89,11 @@ class TestJobServiceCreate:
 
     def test_create_job_with_timezone(self, db_session: Session, test_user):
         """Test creating a job with custom timezone."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
         service = JobService(db_session)
 
         job = service.create_job(
-            project_id=project.id,
+            account_id=account.id,
             name="Test Job",
             schedule="0 9 * * *",
             job_type=1,
@@ -104,11 +104,11 @@ class TestJobServiceCreate:
 
     def test_create_job_disabled(self, db_session: Session, test_user):
         """Test creating a disabled job."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
         service = JobService(db_session)
 
         job = service.create_job(
-            project_id=project.id,
+            account_id=account.id,
             name="Test Job",
             schedule="0 9 * * *",
             job_type=1,
@@ -124,8 +124,8 @@ class TestJobServiceGet:
 
     def test_get_job_by_id_success(self, db_session: Session, test_user):
         """Test retrieving a specific job by ID."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        created_job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        created_job = JobFactory.create(db_session, account.id, "Test Job")
 
         service = JobService(db_session)
         job = service.get_job(created_job.id)
@@ -142,53 +142,53 @@ class TestJobServiceGet:
 
         assert job is None
 
-    def test_get_jobs_by_project_empty(self, db_session: Session, test_user):
-        """Test retrieving jobs when project has none."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
+    def test_get_jobs_by_account_empty(self, db_session: Session, test_user):
+        """Test retrieving jobs when account has none."""
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
         service = JobService(db_session)
 
-        jobs = service.get_jobs_by_project(project.id)
+        jobs = service.get_jobs_by_account(account.id)
 
         assert jobs == []
 
-    def test_get_jobs_by_project_multiple(self, db_session: Session, test_user):
-        """Test retrieving all jobs for a project."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        JobFactory.create_batch(db_session, project.id, count=3, name_prefix="Job")
+    def test_get_jobs_by_account_multiple(self, db_session: Session, test_user):
+        """Test retrieving all jobs for a account."""
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        JobFactory.create_batch(db_session, account.id, count=3, name_prefix="Job")
 
         service = JobService(db_session)
-        jobs = service.get_jobs_by_project(project.id)
+        jobs = service.get_jobs_by_account(account.id)
 
         assert len(jobs) == 3
-        assert all(j.project_id == project.id for j in jobs)
+        assert all(j.account_id == account.id for j in jobs)
 
-    def test_get_jobs_by_project_filters_by_project(self, db_session: Session, test_user):
-        """Test that get_jobs_by_project only returns the specified project's jobs."""
-        project1 = ProjectFactory.create(db_session, test_user.id, "Project 1")
-        project2 = ProjectFactory.create(db_session, test_user.id, "Project 2")
+    def test_get_jobs_by_account_filters_by_account(self, db_session: Session, test_user):
+        """Test that get_jobs_by_account only returns the specified account's jobs."""
+        account1 = AccountFactory.create(db_session, test_user.id, "Account 1")
+        account2 = AccountFactory.create(db_session, test_user.id, "Account 2")
 
-        JobFactory.create_batch(db_session, project1.id, count=2)
-        JobFactory.create_batch(db_session, project2.id, count=3)
+        JobFactory.create_batch(db_session, account1.id, count=2)
+        JobFactory.create_batch(db_session, account2.id, count=3)
 
         service = JobService(db_session)
-        jobs = service.get_jobs_by_project(project1.id)
+        jobs = service.get_jobs_by_account(account1.id)
 
         assert len(jobs) == 2
-        assert all(j.project_id == project1.id for j in jobs)
+        assert all(j.account_id == account1.id for j in jobs)
 
     def test_get_jobs_with_pagination(self, db_session: Session, test_user):
         """Test retrieving jobs with skip and limit."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        JobFactory.create_batch(db_session, project.id, count=10)
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        JobFactory.create_batch(db_session, account.id, count=10)
 
         service = JobService(db_session)
 
         # Get first 5
-        jobs_page1 = service.get_jobs_by_project(project.id, skip=0, limit=5)
+        jobs_page1 = service.get_jobs_by_account(account.id, skip=0, limit=5)
         assert len(jobs_page1) == 5
 
         # Get next 5
-        jobs_page2 = service.get_jobs_by_project(project.id, skip=5, limit=5)
+        jobs_page2 = service.get_jobs_by_account(account.id, skip=5, limit=5)
         assert len(jobs_page2) == 5
 
         # Ensure they're different jobs
@@ -203,8 +203,8 @@ class TestJobServiceUpdate:
 
     def test_update_job_name(self, db_session: Session, test_user):
         """Test updating a job's name."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        created_job = JobFactory.create(db_session, project.id, "Original Name")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        created_job = JobFactory.create(db_session, account.id, "Original Name")
 
         service = JobService(db_session)
         updated_job = service.update_job(created_job.id, name="Updated Name")
@@ -215,8 +215,8 @@ class TestJobServiceUpdate:
 
     def test_update_job_schedule(self, db_session: Session, test_user):
         """Test updating a job's schedule updates next_run_at."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        created_job = JobFactory.create(db_session, project.id, schedule="0 9 * * *")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        created_job = JobFactory.create(db_session, account.id, schedule="0 9 * * *")
         original_next_run = created_job.next_run_at
 
         service = JobService(db_session)
@@ -229,8 +229,8 @@ class TestJobServiceUpdate:
 
     def test_update_job_invalid_schedule(self, db_session: Session, test_user):
         """Test updating with invalid schedule raises ValueError."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        created_job = JobFactory.create(db_session, project.id)
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        created_job = JobFactory.create(db_session, account.id)
 
         service = JobService(db_session)
 
@@ -239,8 +239,8 @@ class TestJobServiceUpdate:
 
     def test_update_job_enabled_status(self, db_session: Session, test_user):
         """Test updating a job's enabled status."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        created_job = JobFactory.create(db_session, project.id, enabled=True)
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        created_job = JobFactory.create(db_session, account.id, enabled=True)
 
         service = JobService(db_session)
         updated_job = service.update_job(created_job.id, enabled=False)
@@ -250,8 +250,8 @@ class TestJobServiceUpdate:
 
     def test_update_job_type(self, db_session: Session, test_user):
         """Test updating a job's type."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        created_job = JobFactory.create(db_session, project.id, job_type=1)
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        created_job = JobFactory.create(db_session, account.id, job_type=1)
 
         service = JobService(db_session)
         updated_job = service.update_job(created_job.id, job_type=2)
@@ -261,8 +261,8 @@ class TestJobServiceUpdate:
 
     def test_update_job_timezone(self, db_session: Session, test_user):
         """Test updating a job's timezone."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        created_job = JobFactory.create(db_session, project.id, timezone="UTC")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        created_job = JobFactory.create(db_session, account.id, timezone="UTC")
 
         service = JobService(db_session)
         updated_job = service.update_job(created_job.id, timezone="America/New_York")
@@ -272,8 +272,8 @@ class TestJobServiceUpdate:
 
     def test_update_job_multiple_fields(self, db_session: Session, test_user):
         """Test updating multiple job fields at once."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        created_job = JobFactory.create(db_session, project.id, "Original", job_type=1)
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        created_job = JobFactory.create(db_session, account.id, "Original", job_type=1)
 
         service = JobService(db_session)
         updated_job = service.update_job(
@@ -303,8 +303,8 @@ class TestJobServiceDelete:
 
     def test_delete_job_success(self, db_session: Session, test_user):
         """Test deleting a job successfully."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        created_job = JobFactory.create(db_session, project.id, "To Delete")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        created_job = JobFactory.create(db_session, account.id, "To Delete")
         job_id = created_job.id
 
         service = JobService(db_session)

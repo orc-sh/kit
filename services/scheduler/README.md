@@ -48,7 +48,7 @@ A lightweight tool to schedule and automate webhooks using cron expressions.
 
 ### Running the Application
 
-The project includes several convenience scripts in the `bin` directory to help you run different components of the application.
+The account includes several convenience scripts in the `bin` directory to help you run different components of the application.
 
 1. Start the Redis server (required for Celery)
 

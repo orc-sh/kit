@@ -37,7 +37,7 @@ def _notification_to_response(notification) -> NotificationResponse:
 
     return NotificationResponse(
         id=notification.id,
-        project_id=notification.project_id,
+        account_id=notification.account_id,
         user_id=notification.user_id,
         type=notification.type,
         name=notification.name,
@@ -66,7 +66,7 @@ async def create_notification(
         Created notification data
 
     Raises:
-        HTTPException: 401 if not authenticated, 400 if validation fails, 404 if project not found
+        HTTPException: 401 if not authenticated, 400 if validation fails, 404 if account not found
     """
     notification_service = get_notification_service(db)
     try:
@@ -86,7 +86,7 @@ async def create_notification(
 async def get_notifications(
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page (max: 100)"),
-    project_id: str = Query(None, description="Optional project ID to filter by"),
+    account_id: str = Query(None, description="Optional account ID to filter by"),
     user: User = Depends(get_current_user),
     db: Session = Depends(client),
 ):
@@ -96,7 +96,7 @@ async def get_notifications(
     Args:
         page: Page number (default: 1, min: 1)
         page_size: Number of items per page (default: 10, max: 100)
-        project_id: Optional project ID to filter by
+        account_id: Optional account ID to filter by
         user: Current authenticated user
         db: Database session
 
@@ -108,7 +108,7 @@ async def get_notifications(
     """
     notification_service = get_notification_service(db)
     notifications, pagination_metadata = notification_service.get_notifications_paginated(
-        user_id=user.id, project_id=project_id, page=page, page_size=page_size
+        user_id=user.id, account_id=account_id, page=page, page_size=page_size
     )
 
     # Convert notifications to response models

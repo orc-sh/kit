@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.context.user_context import set_current_user_context
 from app.models.user import User
-from tests.factories import ProjectFactory
+from tests.factories import AccountFactory
 
 
 @pytest.mark.integration
@@ -19,7 +19,7 @@ class TestCreateCronWebhookAPI:
     """Tests for POST /webhooks endpoint."""
 
     def test_create_webhook_success(self, client: TestClient, db_session: Session, test_user: User):
-        """Test creating a webhook with job and project successfully."""
+        """Test creating a webhook with job and account successfully."""
         set_current_user_context(test_user)
 
         response = client.post(
@@ -46,15 +46,15 @@ class TestCreateCronWebhookAPI:
         assert response.status_code == 201
         data = response.json()
 
-        # Verify project (created with user's name)
-        assert "project" in data
-        assert data["project"]["user_id"] == test_user.id
-        assert data["project"]["name"] == test_user.name
-        assert "id" in data["project"]
+        # Verify account (created with user's name)
+        assert "account" in data
+        assert data["account"]["user_id"] == test_user.id
+        assert data["account"]["name"] == test_user.name
+        assert "id" in data["account"]
 
         # Verify job
         assert "job" in data
-        assert data["job"]["project_id"] == data["project"]["id"]
+        assert data["job"]["account_id"] == data["account"]["id"]
         assert data["job"]["name"] == "Test Job"
         assert data["job"]["schedule"] == "0 9 * * *"
         assert data["job"]["type"] == 1
@@ -67,10 +67,10 @@ class TestCreateCronWebhookAPI:
         assert data["webhook"]["url"] == "https://api.example.com/webhook"
         assert data["webhook"]["method"] == "POST"
 
-    def test_create_webhook_reuses_existing_project(self, client: TestClient, db_session: Session, test_user: User):
-        """Test that webhook creation reuses existing project with user's name."""
-        # Create project with user's name first
-        existing_project = ProjectFactory.create(db_session, test_user.id, test_user.name)
+    def test_create_webhook_reuses_existing_account(self, client: TestClient, db_session: Session, test_user: User):
+        """Test that webhook creation reuses existing account with user's name."""
+        # Create account with user's name first
+        existing_account = AccountFactory.create(db_session, test_user.id, test_user.name)
         set_current_user_context(test_user)
 
         response = client.post(
@@ -91,9 +91,9 @@ class TestCreateCronWebhookAPI:
         assert response.status_code == 201
         data = response.json()
 
-        # Should reuse existing project
-        assert data["project"]["id"] == existing_project.id
-        assert data["project"]["name"] == test_user.name
+        # Should reuse existing account
+        assert data["account"]["id"] == existing_account.id
+        assert data["account"]["name"] == test_user.name
 
     def test_create_webhook_without_auth(self, client: TestClient):
         """Test creating a webhook without authentication fails."""
@@ -365,7 +365,7 @@ class TestCreateCronWebhookAPI:
             },
         )
         assert response1.status_code == 201
-        project_id_1 = response1.json()["project"]["id"]
+        account_id_1 = response1.json()["account"]["id"]
 
         # Create second webhook
         response2 = client.post(
@@ -382,16 +382,16 @@ class TestCreateCronWebhookAPI:
             },
         )
         assert response2.status_code == 201
-        project_id_2 = response2.json()["project"]["id"]
+        account_id_2 = response2.json()["account"]["id"]
 
-        # Should reuse the same project
-        assert project_id_1 == project_id_2
+        # Should reuse the same account
+        assert account_id_1 == account_id_2
 
         # Jobs should be different
         assert response1.json()["job"]["id"] != response2.json()["job"]["id"]
 
     def test_create_webhooks_different_users(self, client: TestClient, test_user: User, another_user: User):
-        """Test creating webhooks for different users creates separate projects."""
+        """Test creating webhooks for different users creates separate accounts."""
         # User 1 creates webhook
         set_current_user_context(test_user)
         response1 = client.post(
@@ -414,10 +414,10 @@ class TestCreateCronWebhookAPI:
         )
         assert response2.status_code == 201
 
-        # Projects should be different
-        assert response1.json()["project"]["id"] != response2.json()["project"]["id"]
-        assert response1.json()["project"]["user_id"] == test_user.id
-        assert response2.json()["project"]["user_id"] == another_user.id
+        # Accounts should be different
+        assert response1.json()["account"]["id"] != response2.json()["account"]["id"]
+        assert response1.json()["account"]["user_id"] == test_user.id
+        assert response2.json()["account"]["user_id"] == another_user.id
 
 
 @pytest.mark.integration
@@ -451,13 +451,13 @@ class TestWebhookAPIWorkflow:
         assert response.status_code == 201
         data = response.json()
 
-        # Verify project exists in database
-        from app.services.project_service import get_project_service
+        # Verify account exists in database
+        from app.services.account_service import get_account_service
 
-        project_service = get_project_service(db_session)
-        project = project_service.get_project(data["project"]["id"], test_user.id)
-        assert project is not None
-        assert project.name == test_user.name
+        account_service = get_account_service(db_session)
+        account = account_service.get_account(data["account"]["id"], test_user.id)
+        assert account is not None
+        assert account.name == test_user.name
 
         # Verify job exists in database
         from app.services.job_service import get_job_service
@@ -466,7 +466,7 @@ class TestWebhookAPIWorkflow:
         job = job_service.get_job(data["job"]["id"])
         assert job is not None
         assert job.name == "Daily Report"
-        assert job.project_id == project.id
+        assert job.account_id == account.id
 
         # Verify webhook exists in database
         from app.services.webhook_service import get_webhook_service
@@ -477,11 +477,11 @@ class TestWebhookAPIWorkflow:
         assert webhook.url == "https://api.example.com/daily-report"
         assert webhook.job_id == job.id
 
-    def test_idempotent_project_creation(self, client: TestClient, test_user: User):
-        """Test that multiple webhook creations reuse the same project."""
+    def test_idempotent_account_creation(self, client: TestClient, test_user: User):
+        """Test that multiple webhook creations reuse the same account."""
         set_current_user_context(test_user)
 
-        project_ids = set()
+        account_ids = set()
 
         # Create 5 webhooks
         for i in range(5):
@@ -499,10 +499,10 @@ class TestWebhookAPIWorkflow:
                 },
             )
             assert response.status_code == 201
-            project_ids.add(response.json()["project"]["id"])
+            account_ids.add(response.json()["account"]["id"])
 
-        # All should use the same project
-        assert len(project_ids) == 1
+        # All should use the same account
+        assert len(account_ids) == 1
 
 
 @pytest.mark.integration
@@ -999,7 +999,7 @@ class TestDeleteWebhookAPI:
         response = client.delete(f"/api/webhooks/{webhook_id}")
         assert response.status_code == 204
 
-        # Verify job still exists (through project/job endpoints if available)
+        # Verify job still exists (through account/job endpoints if available)
         # For now, we just verify webhook is gone
         response = client.get(f"/api/webhooks/{webhook_id}")
         assert response.status_code == 404

@@ -14,13 +14,13 @@ class Url(Base):
     __tablename__ = "urls"
 
     id = Column(String(36), primary_key=True)
-    project_id = Column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    account_id = Column(String(36), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
     unique_identifier = Column(String(64), unique=True, nullable=False, index=True)
     created_at = Column(TIMESTAMP, server_default=func.current_timestamp())
     updated_at = Column(TIMESTAMP, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
 
     __table_args__ = (
-        Index("idx_urls_project_id", "project_id"),
+        Index("idx_urls_account_id", "account_id"),
         Index("idx_urls_unique_identifier", "unique_identifier"),
     )
 
