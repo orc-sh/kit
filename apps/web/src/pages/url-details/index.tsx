@@ -16,17 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  ArrowLeft,
-  Copy,
-  Check,
-  Globe,
-  Clock,
-  Trash2,
-  ChevronLeft,
-  Send,
-  ExternalLink,
-} from 'lucide-react';
+import { Copy, Check, Globe, Trash2, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +28,7 @@ const UrlDetailsPage = () => {
   const navigate = useNavigate();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, _setCurrentPage] = useState(1);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const pageSize = 50;
 
