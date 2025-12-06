@@ -3,6 +3,7 @@ import { useWebhook, useDeleteWebhook, useUpdateWebhook } from '@/hooks/use-webh
 import { useJobExecutions } from '@/hooks/use-job-executions';
 import { FadeIn } from '@/components/motion/fade-in';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -432,7 +433,7 @@ const WebhookDetailsPage = () => {
             className="grid gap-6 relative"
             initial={false}
             animate={{
-              gridTemplateColumns: expandedExecution ? '1fr 1fr' : '1fr',
+              gridTemplateColumns: expandedExecution ? '0.3fr 0.7fr' : '1fr',
             }}
             transition={{
               duration: 0.4,
@@ -541,73 +542,91 @@ const WebhookDetailsPage = () => {
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="bg-card rounded-lg p-4 border border-border/50">
-                          <div className="space-y-4">
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-2">
-                                Response ({execution.response.status})
-                              </p>
-                              <div className="rounded-md border bg-background">
-                                <div className="border-b p-2 bg-muted/30">
-                                  <p className="text-xs font-medium text-foreground">Headers</p>
-                                </div>
-                                <div className="p-3">
-                                  <div className="space-y-2">
-                                    {Object.entries(execution.response.headers).map(
-                                      ([key, value]) => (
-                                        <div
-                                          key={key}
-                                          className="grid grid-cols-3 gap-2 p-2 rounded items-center"
-                                        >
-                                          <p className="text-sm font-semibold text-muted-foreground col-span-1">
-                                            {key}
-                                          </p>
-                                          <div className="flex items-center justify-between gap-2 col-span-2">
-                                            <code className="text-xs break-all font-mono">
-                                              {String(value)}
-                                            </code>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() =>
-                                                handleCopy(`${key}: ${value}`, execution.id)
-                                              }
-                                              className="flex-shrink-0"
-                                            >
-                                              {copiedId === execution.id ? (
-                                                <Check className="h-3 w-3" />
-                                              ) : (
-                                                <Copy className="h-3 w-3" />
-                                              )}
-                                            </Button>
-                                          </div>
+                          <Tabs defaultValue="headers" className="w-full">
+                            <TabsList className="grid w-full grid-cols-2">
+                              <TabsTrigger value="headers">Headers</TabsTrigger>
+                              <TabsTrigger value="body">Body</TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="headers" className="mt-4">
+                              {execution.response.headers &&
+                              Object.keys(execution.response.headers).length > 0 ? (
+                                <div className="space-y-2">
+                                  {Object.entries(execution.response.headers).map(
+                                    ([key, value]) => (
+                                      <div
+                                        key={key}
+                                        className="grid grid-cols-3 gap-2 p-2 rounded items-center"
+                                      >
+                                        <p className="text-sm font-semibold text-muted-foreground col-span-1">
+                                          {key}
+                                        </p>
+                                        <div className="flex items-center justify-between gap-2 col-span-2">
+                                          <code className="text-xs break-all font-mono">
+                                            {String(value)}
+                                          </code>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                              handleCopy(`${key}: ${value}`, execution.id)
+                                            }
+                                            className="flex-shrink-0"
+                                          >
+                                            {copiedId === execution.id ? (
+                                              <Check className="h-3 w-3" />
+                                            ) : (
+                                              <Copy className="h-3 w-3" />
+                                            )}
+                                          </Button>
                                         </div>
-                                      )
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-2">Body</p>
-                              <div className="relative">
-                                <pre className="text-xs font-mono p-3 rounded-md bg-muted/20 border overflow-x-auto max-h-[300px]">
-                                  {execution.response.body}
-                                </pre>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="absolute top-2 right-2"
-                                  onClick={() => handleCopy(execution.response.body, execution.id)}
-                                >
-                                  {copiedId === execution.id ? (
-                                    <Check className="h-4 w-4" />
-                                  ) : (
-                                    <Copy className="h-4 w-4" />
+                                      </div>
+                                    )
                                   )}
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">No headers</p>
+                              )}
+                            </TabsContent>
+
+                            <TabsContent value="body" className="mt-4">
+                              {execution.response.body ? (
+                                <div className="relative">
+                                  <pre className="max-h-[300px] overflow-auto rounded bg-muted p-4 text-xs">
+                                    <code className="language-json">
+                                      {(() => {
+                                        try {
+                                          return JSON.stringify(
+                                            JSON.parse(execution.response.body),
+                                            null,
+                                            2
+                                          );
+                                        } catch {
+                                          return execution.response.body;
+                                        }
+                                      })()}
+                                    </code>
+                                  </pre>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute top-2 right-2"
+                                    onClick={() =>
+                                      handleCopy(execution.response.body, execution.id)
+                                    }
+                                  >
+                                    {copiedId === execution.id ? (
+                                      <Check className="h-4 w-4" />
+                                    ) : (
+                                      <Copy className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-center text-muted-foreground">No body</p>
+                              )}
+                            </TabsContent>
+                          </Tabs>
                         </CardContent>
                       </Card>
                     );

@@ -264,6 +264,80 @@ class NotificationService:
             query = query.filter(Notification.account_id == account_id)
         return query.count()
 
+    def has_email_notification(self, account_id: str, user_id: str) -> bool:
+        """
+        Check if an email notification already exists for the given account.
+
+        Args:
+            account_id: ID of the account
+            user_id: ID of the user
+
+        Returns:
+            True if an email notification exists, False otherwise
+        """
+        existing = (
+            self.db.query(Notification)
+            .filter(
+                Notification.account_id == account_id,
+                Notification.user_id == user_id,
+                Notification.type == NotificationType.EMAIL,
+            )
+            .first()
+        )
+        return existing is not None
+
+    def create_email_notification_if_not_exists(
+        self, account_id: str, user_id: str, email: str, name: str = "Default Email Channel"
+    ) -> Optional[Notification]:
+        """
+        Create an email notification channel if it doesn't already exist for the account.
+        This is a "soft" operation - it will not raise exceptions if creation fails.
+
+        Args:
+            account_id: ID of the account
+            user_id: ID of the user
+            email: Email address for the notification
+            name: Name for the notification channel (default: "Default Email Channel")
+
+        Returns:
+            Created Notification instance if successful, None if it already exists or creation fails
+        """
+        try:
+            # Check if email notification already exists
+            if self.has_email_notification(account_id, user_id):
+                logger.info(f"Email notification already exists for account {account_id}, skipping creation")
+                return None
+
+            # Validate email
+            if not email or not email.strip():
+                logger.warning(f"Cannot create email notification for account {account_id}: no email provided")
+                return None
+
+            # Create the notification
+            notification = Notification(
+                id=str(uuid.uuid4()),
+                account_id=account_id,
+                user_id=user_id,
+                type=NotificationType.EMAIL,
+                name=name,
+                enabled="true",
+                config=json.dumps({"email": email.strip()}),
+            )
+            self.db.add(notification)
+            self.db.commit()
+            self.db.refresh(notification)
+            logger.info(f"Created email notification channel for account {account_id} with email {email}")
+            return notification
+        except Exception as e:
+            # Soft failure - log error but don't raise
+            logger.error(f"Failed to create email notification for account {account_id}: {str(e)}")
+            # Rollback any partial changes
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
+            return None
+
     def _parse_config(self, notification: Notification) -> dict:
         """
         Parse the JSON config string from a notification.

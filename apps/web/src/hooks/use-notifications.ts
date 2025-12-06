@@ -57,6 +57,9 @@ export const useCreateNotification = () => {
       // Invalidate notifications query to refetch the list
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
+    onError: (error: any) => {
+      console.error('Failed to create notification:', error);
+    },
   });
 };
 

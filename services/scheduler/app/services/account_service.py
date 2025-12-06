@@ -92,6 +92,25 @@ class AccountService:
                 # Refresh account after successful commit
                 self.db.refresh(account)
                 logger.info(f"Created free tier subscription for account {account.id}")
+
+                # Create default email notification channel if it doesn't exist (soft operation)
+                # This won't fail account creation if notification creation fails
+                try:
+                    from app.services.notification_service import get_notification_service
+
+                    notification_service = get_notification_service(self.db)
+                    notification_service.create_email_notification_if_not_exists(
+                        account_id=str(account.id),
+                        user_id=user_id,
+                        email=customer_email,
+                        name="Default Email Channel",
+                    )
+                except Exception as notification_error:
+                    # Log error but don't fail account creation
+                    logger.warning(
+                        f"Failed to create default email notification for account {account.id}: "
+                        f"{str(notification_error)}"
+                    )
             except Exception as e:
                 # Rollback the entire transaction if subscription creation fails
                 # This will automatically rollback the account since they're in the same transaction
@@ -104,6 +123,7 @@ class AccountService:
             # If no user provided, commit the account creation
             self.db.commit()
             self.db.refresh(account)
+            # Note: Email notification creation requires user email, so skip if no user provided
 
         return account
 
