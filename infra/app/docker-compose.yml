@@ -83,6 +83,24 @@ services:
     networks:
       - scheduler_network
 
+  # Web Frontend (React/Vite)
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+    container_name: scheduler_web
+    # Port mapping removed - accessed via nginx reverse proxy
+    environment:
+      - VITE_API_BASE_URL=
+    restart: unless-stopped
+    networks:
+      - scheduler_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # Nginx
   nginx:
     image: nginx:alpine
@@ -96,6 +114,7 @@ services:
     depends_on:
       - scheduler_api
       - auth_api
+      - web
     restart: unless-stopped
     networks:
       - scheduler_network
