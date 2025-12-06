@@ -2,9 +2,6 @@
 Rate limiter service for webhook execution based on subscription plan.
 
 Uses Redis to track webhook execution counts per webhook ID with 24-hour expiration.
-Rate limits:
-- Free plan: 100 executions per day per webhook
-- Pro plan: 1000 executions per day per webhook
 """
 
 import os
@@ -13,6 +10,12 @@ from typing import Optional
 import redis
 from sqlalchemy.orm import Session
 
+from app.constants.rate_limit import (
+    JOB_CREATION_LIMITS,
+    RATE_LIMITS,
+    REDIS_TTL,
+    URL_CREATION_LIMITS,
+)
 from app.logging.context_logger import get_logger
 from app.models.accounts import Account
 from app.models.jobs import Job
@@ -20,28 +23,6 @@ from app.models.subscriptions import Subscription
 from app.models.webhooks import Webhook
 
 logger = get_logger(__name__)
-
-# Rate limits per plan (executions per day per webhook)
-RATE_LIMITS = {
-    "free": 100,
-    "pro": 10,
-}
-
-# Creation limits per plan
-# Free plan: unlimited URLs, 10 jobs/schedules
-# Pro plan: 100 URLs, 100 jobs/schedules
-URL_CREATION_LIMITS = {
-    "free": 10,  # None means unlimited
-    "pro": 10,
-}
-
-JOB_CREATION_LIMITS = {
-    "free": 10,
-    "pro": 100,
-}
-
-# Redis key expiration time (24 hours in seconds)
-REDIS_TTL = 24 * 60 * 60  # 86400 seconds
 
 
 class RateLimiterService:

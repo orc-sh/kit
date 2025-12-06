@@ -245,10 +245,10 @@ class SchedulerService:
             self.db.refresh(execution)
 
             # Update next_run_at BEFORE enqueuing (recalculate based on cron)
-            from croniter import croniter
+            from app.utils.cron_utils import create_croniter
 
             now = datetime.utcnow()
-            cron = croniter(job.schedule, now)
+            cron = create_croniter(str(job.schedule), now)
             next_run = cron.get_next(datetime)
             job.next_run_at = next_run
             job.last_run_at = now

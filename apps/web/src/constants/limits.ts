@@ -1,12 +1,18 @@
 /**
- * Creation limits per plan
- * These constants match the backend constants in rate_limiter_service.py
+ * Rate limiting and creation limits per plan
+ * These constants match the backend constants in app/constants/rate_limit.py
  */
+
+// Rate limits per plan (executions per day per webhook)
+export const RATE_LIMITS = {
+  free: 100,
+  pro: 1000,
+} as const;
 
 // URL creation limits per plan
 export const URL_CREATION_LIMITS = {
   free: 10,
-  pro: 10,
+  pro: 100,
 } as const;
 
 // Job/schedule creation limits per plan
@@ -47,4 +53,12 @@ export const getUrlLimit = (planId: string | null | undefined): number | null =>
 export const getJobLimit = (planId: string | null | undefined): number => {
   const planType = getPlanType(planId);
   return JOB_CREATION_LIMITS[planType];
+};
+
+/**
+ * Get rate limit for a plan (executions per day per webhook)
+ */
+export const getRateLimit = (planId: string | null | undefined): number => {
+  const planType = getPlanType(planId);
+  return RATE_LIMITS[planType];
 };

@@ -418,78 +418,139 @@ const WebhookDetailsPage = () => {
       <div className="container mx-auto space-y-6 max-w-7xl">
         {/* Header */}
         <FadeIn>
-          <Card className="mb-4 rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm">
-            <CardContent className="flex items-center justify-between gap-6 p-4">
-              {/* Left Side - Information */}
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                  <Webhook className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-sm text-foreground truncate">
-                      {job?.name || 'Unnamed Webhook'}
-                    </h3>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(webhook.created_at), {
-                        addSuffix: true,
-                      })}
-                    </span>
+          <div className="space-y-4">
+            <Card className="rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm">
+              <CardContent className="flex items-center justify-between gap-6 p-4">
+                {/* Left Side - Information */}
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+                    <Webhook className="h-5 w-5 text-primary" />
                   </div>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <code className="truncate font-mono">{webhook.url}</code>
-                      <button
-                        className="flex-shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-all hover:text-foreground group-hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopy(webhook.url, webhook.id);
-                        }}
-                      >
-                        {copiedId === webhook.id ? (
-                          <Check className="h-3 w-3" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-sm text-foreground truncate">
+                        {job?.name || 'Unnamed Webhook'}
+                      </h3>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(webhook.created_at), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <code className="truncate font-mono">{webhook.url}</code>
+                        <button
+                          className="flex-shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-all hover:text-foreground group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopy(webhook.url, webhook.id);
+                          }}
+                        >
+                          {copiedId === webhook.id ? (
+                            <Check className="h-3 w-3" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Right Side - Actions */}
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <div className="flex items-center gap-1">
-                  {/* Edit Button */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => navigate(`/edit/${webhook.id}`)}
-                    className="h-9 group"
-                  >
-                    <Pencil className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </Button>
-                  {/* Delete Button */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDeleteDialogOpen(true)}
-                    className="h-9 group"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors" />
-                  </Button>
+                {/* Right Side - Actions */}
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="flex items-center gap-1">
+                    {/* Edit Button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => navigate(`/edit/${webhook.id}`)}
+                      className="h-9 group"
+                    >
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </Button>
+                    {/* Delete Button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeleteDialogOpen(true)}
+                      className="h-9 group"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors" />
+                    </Button>
+                  </div>
+                  {/* Enable/Disable Toggle */}
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={job?.enabled ?? false}
+                      onCheckedChange={handleToggleEnabled}
+                      disabled={updateWebhook.isPending}
+                    />
+                  </div>
                 </div>
-                {/* Enable/Disable Toggle */}
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={job?.enabled ?? false}
-                    onCheckedChange={handleToggleEnabled}
-                    disabled={updateWebhook.isPending}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            {/* Stats Tiles */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <Card className="rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Total Executions</p>
+                      <p className="text-2xl font-semibold">{summaryStats.total}</p>
+                    </div>
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <PlayCircle className="h-5 w-5 text-primary" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Success Rate</p>
+                      <p className="text-2xl font-semibold">{summaryStats.successRate}%</p>
+                    </div>
+                    <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Avg Duration</p>
+                      <p className="text-2xl font-semibold">{summaryStats.avgDuration}ms</p>
+                    </div>
+                    <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                      <Timer className="h-5 w-5 text-blue-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Errors</p>
+                      <p className="text-2xl font-semibold text-red-600">{summaryStats.error}</p>
+                    </div>
+                    <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                      <XCircle className="h-5 w-5 text-red-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </FadeIn>
 
         {/* Execution Overview Chart */}

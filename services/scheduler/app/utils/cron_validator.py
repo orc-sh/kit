@@ -5,12 +5,12 @@ Utility functions for validating cron expressions based on user tiers.
 from datetime import datetime
 from typing import Optional
 
-from croniter import croniter
 from sqlalchemy.orm.session import Session
 from sqlalchemy.sql import select
 
 import app.models as models
 from app.logging.context_logger import get_logger
+from app.utils.cron_utils import create_croniter
 
 # Minimum intervals in seconds
 FREE_TIER_MIN_INTERVAL = 5 * 60  # 5 minutes
@@ -97,7 +97,7 @@ def calculate_min_interval_from_cron(cron_expr: str, base_time: Optional[datetim
         base_time = datetime.utcnow()
 
     try:
-        cron = croniter(cron_expr, base_time)
+        cron = create_croniter(cron_expr, base_time)
     except Exception as e:
         raise ValueError(f"Invalid cron expression: {str(e)}")
 
@@ -156,7 +156,7 @@ def validate_cron_interval(db: Session, cron_expr: str, account_id: str, base_ti
     # We'll allow it but check if the first execution is too soon
     if actual_min == 0:
         try:
-            cron = croniter(cron_expr, base_time or datetime.utcnow())
+            cron = create_croniter(cron_expr, base_time or datetime.utcnow())
             next_run = cron.get_next(datetime)
             time_until_next = (next_run - (base_time or datetime.utcnow())).total_seconds()  # type: ignore
 
