@@ -195,13 +195,15 @@ class JobService:
         from croniter import croniter
 
         base_time = dt.utcnow().replace(microsecond=0)
+        # Check if the schedule has seconds at the beginning (i.e., 6 fields)
+        schedule_fields = schedule.strip().split()
+        has_seconds = len(schedule_fields) == 6  # True if seconds are present
         # Explicitly enable second-level cron schedule support
-        cron = croniter(schedule, base_time, ret_type=float)  # get timestamp for seconds-level precision
-        next_run_ts = cron.get_next(ret_type=datetime)
+        cron = croniter(
+            schedule, base_time, ret_type=float, second_at_beginning=has_seconds
+        )  # get timestamp for seconds-level precision
+        next_run_ts = cron.get_next(ret_type=float)
         next_run = dt.utcfromtimestamp(next_run_ts)
-        if not isinstance(next_run, dt):
-            # If cron.get_next returns a float (timestamp), convert to datetime
-            next_run = dt.utcfromtimestamp(next_run)
         if not next_run:
             raise ValueError("Invalid cron schedule")
         # ensure no microseconds for seconds-level precision

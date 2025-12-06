@@ -21,7 +21,7 @@ router = APIRouter()
 
 
 @router.post("", response_model=CronWebhookResponse, status_code=status.HTTP_201_CREATED)
-async def create_cron_webhook(
+async def create_webhook(
     request: CreateCronWebhookRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(client),
