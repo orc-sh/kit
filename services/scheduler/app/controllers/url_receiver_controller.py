@@ -8,6 +8,7 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.services.rate_limiter_service import get_rate_limiter_service
 from app.services.url_service import get_url_service
 from db.client import client
 
@@ -73,6 +74,16 @@ async def receive_request(
             detail=f"URL with identifier '{unique_identifier}' not found",
         )
 
+    # Check rate limit before processing
+    rate_limiter = get_rate_limiter_service()
+    is_allowed, current_count, limit = rate_limiter.check_rate_limit_for_url(db, str(url.id), str(url.account_id))
+
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded: {current_count}/{limit} requests per day for this URL",
+        )
+
     # Extract request data
     method = request.method
     headers = dict(request.headers)
@@ -102,6 +113,9 @@ async def receive_request(
         ip_address=ip_address,
         user_agent=user_agent,
     )
+
+    # Increment rate limit counter after successful logging
+    rate_limiter.increment_rate_limit(str(url.id), key_type="url")
 
     # Return success response
     return {
