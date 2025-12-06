@@ -85,7 +85,7 @@ def execute_job(self, execution_id: str):
             return
 
         # Check if job is still enabled
-        if not job.enabled.value:
+        if not job.enabled:
             logger.warning(f"Job {job.id} is not enabled")
             _update_execution_status_in_db(db, execution_id, "failure", error="Job is disabled")
             return
