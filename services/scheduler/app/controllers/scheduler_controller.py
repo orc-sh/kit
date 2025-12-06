@@ -2,13 +2,16 @@
 Scheduler controller for managing scheduled webhook integrations.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.middleware.auth_middleware import get_current_user
 from app.models.user import User
 from app.schemas.request.webhook_schemas import CreateCronWebhookRequest, UpdateWebhookRequest
-from app.schemas.response.job_execution_schemas import JobExecutionResponse
+from app.schemas.response.job_execution_schemas import (
+    PaginatedJobExecutionsResponse,
+    PaginationMeta,
+)
 from app.schemas.response.webhook_schemas import CronWebhookResponse, WebhookResponse
 from app.services.account_service import get_account_service
 from app.services.job_execution_service import get_job_execution_service
@@ -409,14 +412,20 @@ async def delete_webhook(
         )
 
 
-@router.get("/{webhook_id}/executions", response_model=list[JobExecutionResponse], status_code=status.HTTP_200_OK)
+@router.get(
+    "/{webhook_id}/executions",
+    response_model=PaginatedJobExecutionsResponse,
+    status_code=status.HTTP_200_OK,
+)
 async def get_job_executions(
     webhook_id: str,
+    limit: int = Query(20, ge=1, le=100, description="Maximum number of executions to return"),
+    offset: int = Query(0, ge=0, description="Number of executions to skip (for pagination)"),
     user: User = Depends(get_current_user),
     db: Session = Depends(client),
 ):
     """
-    Get all executions for a webhook.
+    Get executions for a webhook with pagination support.
     """
     try:
         webhook_service = get_webhook_service(db)
@@ -425,8 +434,13 @@ async def get_job_executions(
         if not webhook:
             raise NotFoundException(detail="Webhook not found")
 
-        executions = job_execution_service.get_executions_by_job_id(str(webhook.job_id))
-        return executions
+        executions = job_execution_service.get_executions_by_job_id(str(webhook.job_id), limit=limit, offset=offset)
+        total = job_execution_service.count_executions_by_job_id(str(webhook.job_id))
+
+        return PaginatedJobExecutionsResponse(
+            data=executions,
+            meta=PaginationMeta(total=total, limit=limit, offset=offset),
+        )
     except NotFoundException:
         raise
     except Exception as e:

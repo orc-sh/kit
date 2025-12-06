@@ -47,6 +47,7 @@ import {
   useUpdateNotification,
   useDeleteNotification,
 } from '@/hooks/use-notifications';
+import { useSubscriptions } from '@/hooks/use-subscriptions';
 import type { NotificationType } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -65,12 +66,23 @@ const NotificationsPage = () => {
   // Fetch notifications
   const { data: notificationsData, isLoading: isLoadingNotifications } = useNotifications(page, 10);
 
+  // Fetch subscriptions to check plan
+  const { data: subscriptions } = useSubscriptions();
+
   // Mutations
   const createNotification = useCreateNotification();
   const updateNotification = useUpdateNotification();
   const deleteNotification = useDeleteNotification();
 
   const notifications = notificationsData?.data || [];
+
+  // Determine plan tier and limits
+  const subscription = subscriptions?.[0];
+  const isProPlan = subscription?.plan_id?.toLowerCase().startsWith('pro') ?? false;
+  const notificationCount = notifications.length;
+  const maxNotifications = isProPlan ? 10 : 1;
+  const canCreateMore = notificationCount < maxNotifications;
+  const isFreePlanAtLimit = !isProPlan && notificationCount >= 1;
 
   // Debug: Log when dialog state changes
   useEffect(() => {
@@ -261,10 +273,17 @@ const NotificationsPage = () => {
                   }}
                   className="mt-6 cursor-pointer"
                   size="lg"
+                  disabled={isFreePlanAtLimit}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Notification Channel
                 </Button>
+                {isFreePlanAtLimit && (
+                  <p className="mt-2 text-xs text-muted-foreground text-center">
+                    Free plan allows only 1 email notification. Upgrade to Pro for up to 10
+                    channels.
+                  </p>
+                )}
               </div>
             </FadeIn>
           </div>
@@ -288,7 +307,11 @@ const NotificationsPage = () => {
               <DialogDescription>
                 {editingNotificationId
                   ? 'Update the notification channel configuration'
-                  : 'Configure a new channel to receive webhook execution notifications'}
+                  : canCreateMore
+                    ? 'Configure a new channel to receive webhook execution notifications'
+                    : isProPlan
+                      ? 'You have reached the maximum of 10 notification channels. Delete an existing channel to create a new one.'
+                      : 'Free plan allows only 1 email notification. Upgrade to Pro to create up to 10 channels of any type.'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -309,22 +332,31 @@ const NotificationsPage = () => {
                         Email
                       </div>
                     </SelectItem>
-                    <SelectItem value="slack">
+                    <SelectItem value="slack" disabled={!isProPlan && !editingNotificationId}>
                       <div className="flex items-center gap-2">
                         <MessageSquare className="h-4 w-4" />
                         Slack
+                        {!isProPlan && !editingNotificationId && (
+                          <span className="ml-auto text-xs text-muted-foreground">(Pro only)</span>
+                        )}
                       </div>
                     </SelectItem>
-                    <SelectItem value="discord">
+                    <SelectItem value="discord" disabled={!isProPlan && !editingNotificationId}>
                       <div className="flex items-center gap-2">
                         <MessageSquare className="h-4 w-4" />
                         Discord
+                        {!isProPlan && !editingNotificationId && (
+                          <span className="ml-auto text-xs text-muted-foreground">(Pro only)</span>
+                        )}
                       </div>
                     </SelectItem>
-                    <SelectItem value="webhook">
+                    <SelectItem value="webhook" disabled={!isProPlan && !editingNotificationId}>
                       <div className="flex items-center gap-2">
                         <Webhook className="h-4 w-4" />
                         Webhook
+                        {!isProPlan && !editingNotificationId && (
+                          <span className="ml-auto text-xs text-muted-foreground">(Pro only)</span>
+                        )}
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -386,7 +418,11 @@ const NotificationsPage = () => {
               </Button>
               <Button
                 onClick={handleAddChannel}
-                disabled={createNotification.isPending || updateNotification.isPending}
+                disabled={
+                  createNotification.isPending ||
+                  updateNotification.isPending ||
+                  (!canCreateMore && !editingNotificationId)
+                }
               >
                 {createNotification.isPending || updateNotification.isPending ? (
                   <>
@@ -426,6 +462,7 @@ const NotificationsPage = () => {
                   setIsDialogOpen(true);
                 }}
                 className="cursor-pointer relative z-20"
+                disabled={!canCreateMore}
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Channel
@@ -537,38 +574,47 @@ const NotificationsPage = () => {
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="w-32">
                               <DropdownMenuItem
                                 onClick={() => handleToggleChannel(channel)}
                                 disabled={updateNotification.isPending}
+                                className="py-1.5 px-2 text-xs cursor-pointer"
                               >
-                                <Power className="mr-2 h-4 w-4" />
+                                <Power className="mr-1.5 h-3.5 w-3.5" />
                                 {channel.enabled ? 'Disable' : 'Enable'}
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
+                              <DropdownMenuSeparator className="my-0.5" />
                               <DropdownMenuItem
                                 onClick={() => handleEditChannel(channel)}
                                 disabled={
                                   updateNotification.isPending || deleteNotification.isPending
                                 }
+                                className="py-1.5 px-2 text-xs cursor-pointer"
                               >
-                                <Pencil className="mr-2 h-4 w-4" />
+                                <Pencil className="mr-1.5 h-3.5 w-3.5" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
+                              <DropdownMenuSeparator className="my-0.5" />
                               <DropdownMenuItem
                                 onClick={() => handleDeleteChannel(channel.id)}
                                 disabled={
                                   deleteNotification.isPending || updateNotification.isPending
                                 }
-                                className="text-destructive focus:text-destructive"
+                                className="py-1.5 px-2 text-xs cursor-pointer group"
                               >
                                 {deleteNotification.isPending ? (
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  <>
+                                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                    Delete
+                                  </>
                                 ) : (
-                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <>
+                                    <Trash2 className="mr-1.5 h-3.5 w-3.5 text-foreground group-hover:text-destructive transition-colors" />
+                                    <span className="text-foreground group-hover:text-destructive transition-colors">
+                                      Delete
+                                    </span>
+                                  </>
                                 )}
-                                Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -622,22 +668,31 @@ const NotificationsPage = () => {
                       Email
                     </div>
                   </SelectItem>
-                  <SelectItem value="slack">
+                  <SelectItem value="slack" disabled={!isProPlan && !editingNotificationId}>
                     <div className="flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
                       Slack
+                      {!isProPlan && !editingNotificationId && (
+                        <span className="ml-auto text-xs text-muted-foreground">(Pro only)</span>
+                      )}
                     </div>
                   </SelectItem>
-                  <SelectItem value="discord">
+                  <SelectItem value="discord" disabled={!isProPlan && !editingNotificationId}>
                     <div className="flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
                       Discord
+                      {!isProPlan && !editingNotificationId && (
+                        <span className="ml-auto text-xs text-muted-foreground">(Pro only)</span>
+                      )}
                     </div>
                   </SelectItem>
-                  <SelectItem value="webhook">
+                  <SelectItem value="webhook" disabled={!isProPlan && !editingNotificationId}>
                     <div className="flex items-center gap-2">
                       <Webhook className="h-4 w-4" />
                       Webhook
+                      {!isProPlan && !editingNotificationId && (
+                        <span className="ml-auto text-xs text-muted-foreground">(Pro only)</span>
+                      )}
                     </div>
                   </SelectItem>
                 </SelectContent>

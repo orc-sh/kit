@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models.notifications import Notification, NotificationType
 from app.services.account_service import get_account_service
+from app.services.subscription_service import get_subscription_service
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,9 @@ class NotificationService:
         # Use the first account
         account = accounts[0]
         account_id = account.id
+
+        # Check plan-based restrictions
+        self._validate_plan_limits(account_id, user_id, notification_type)
 
         # Validate notification type
         if notification_type not in [
@@ -337,6 +341,55 @@ class NotificationService:
             except Exception:
                 pass
             return None
+
+    def _validate_plan_limits(self, account_id: str, user_id: str, notification_type: str) -> None:
+        """
+        Validate notification creation based on subscription plan limits.
+
+        Rules:
+        - Free plan: Only 1 email notification allowed (the default one)
+        - Pro plan: Up to 10 notifications of any type
+
+        Args:
+            account_id: ID of the account
+            user_id: ID of the user
+            notification_type: Type of notification being created
+
+        Raises:
+            ValueError: If plan limits are exceeded
+        """
+        # Get subscription for the account
+        subscription_service = get_subscription_service(self.db)
+        subscription = subscription_service.get_subscription_by_account(account_id)
+
+        # Determine plan tier
+        is_pro_plan = False
+        if subscription and subscription.plan_id.lower().startswith("pro"):
+            is_pro_plan = True
+
+        # Get current notification count for the account
+        current_count = self.count_notifications(user_id, account_id)
+
+        if is_pro_plan:
+            # Pro plan: up to 10 notifications of any type
+            if current_count >= 10:
+                raise ValueError(
+                    "Pro plan allows up to 10 notification channels. "
+                    "Please delete an existing channel or upgrade your plan."
+                )
+        else:
+            # Free plan: only 1 email notification allowed (the default one)
+            if current_count >= 1:
+                raise ValueError(
+                    "Free plan allows only 1 email notification channel (created by default). "
+                    "Upgrade to Pro plan to create up to 10 notification channels of any type."
+                )
+            # Free plan can only create email notifications
+            if notification_type != NotificationType.EMAIL:
+                raise ValueError(
+                    "Free plan only supports email notifications. "
+                    "Upgrade to Pro plan to use Slack, Discord, or Webhook notifications."
+                )
 
     def _parse_config(self, notification: Notification) -> dict:
         """

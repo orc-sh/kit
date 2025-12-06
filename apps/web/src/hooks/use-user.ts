@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth-store';
 /**
  * Hook to delete the current user's account
  */
-export const useDeleteAccount = () => {
+export const useDeleteCurrentAccount = () => {
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
 

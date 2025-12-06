@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { User, Crown, Check, Trash2 } from 'lucide-react';
 import { useSubscriptions, useUpdateSubscription } from '@/hooks/use-subscriptions';
-import { useDeleteAccount } from '@/hooks/use-user';
+import { useDeleteCurrentAccount } from '@/hooks/use-user';
 import { PLAN_IDS, type PlanId } from '@/types';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -37,7 +37,7 @@ const ProfilePage = () => {
     error: subscriptionsError,
   } = useSubscriptions();
   const updateSubscription = useUpdateSubscription();
-  const deleteAccount = useDeleteAccount();
+  const deleteAccount = useDeleteCurrentAccount();
   const [updatingSubscriptionId, setUpdatingSubscriptionId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 

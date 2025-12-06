@@ -89,3 +89,14 @@ export interface JobExecution {
   attempt: number;
   created_at: string;
 }
+
+export interface PaginationMeta {
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface PaginatedJobExecutionsResponse {
+  data: JobExecution[];
+  meta: PaginationMeta;
+}

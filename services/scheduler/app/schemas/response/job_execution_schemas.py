@@ -3,7 +3,7 @@ Response schemas for job execution operations.
 """
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -45,3 +45,18 @@ class JobExecutionResponse(BaseModel):
     error: Optional[str] = Field(None, description="Error message if the execution failed")
     attempt: int = Field(..., description="Retry attempt number")
     created_at: datetime = Field(..., description="When the execution was created")
+
+
+class PaginationMeta(BaseModel):
+    """Schema for pagination metadata"""
+
+    total: int = Field(..., description="Total number of executions")
+    limit: int = Field(..., description="Number of items per page")
+    offset: int = Field(..., description="Number of items skipped")
+
+
+class PaginatedJobExecutionsResponse(BaseModel):
+    """Schema for paginated job executions response"""
+
+    data: List[JobExecutionResponse] = Field(..., description="List of job executions")
+    meta: PaginationMeta = Field(..., description="Pagination metadata")

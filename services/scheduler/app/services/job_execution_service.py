@@ -30,6 +30,18 @@ class JobExecutionService:
             .all()
         )
 
+    def count_executions_by_job_id(self, job_id: str) -> int:
+        """
+        Count total number of executions for a given job ID.
+
+        Args:
+            job_id: str - The ID of the job.
+
+        Returns:
+            int: Total count of executions.
+        """
+        return self.db.query(JobExecution).filter(JobExecution.job_id == job_id).count()
+
 
 def get_job_execution_service(db: Session) -> JobExecutionService:
     """
