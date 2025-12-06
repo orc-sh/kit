@@ -17,7 +17,7 @@ class JobFactory:
     @staticmethod
     def create(
         db: Session,
-        project_id: str,
+        account_id: str,
         name: Optional[str] = None,
         schedule: str = "0 9 * * *",
         job_type: int = 1,
@@ -32,7 +32,7 @@ class JobFactory:
 
         Args:
             db: Database session
-            project_id: ID of the project this job belongs to
+            account_id: ID of the account this job belongs to
             name: Name of the job
             schedule: Cron schedule expression
             job_type: Job type identifier
@@ -47,7 +47,7 @@ class JobFactory:
         """
         job = Job(
             id=job_id or str(uuid.uuid4()),
-            project_id=project_id,
+            account_id=account_id,
             name=name or f"Test Job {uuid.uuid4().hex[:8]}",
             schedule=schedule,
             type=job_type,
@@ -63,14 +63,14 @@ class JobFactory:
 
     @staticmethod
     def create_batch(
-        db: Session, project_id: str, count: int = 5, name_prefix: Optional[str] = None, **kwargs
+        db: Session, account_id: str, count: int = 5, name_prefix: Optional[str] = None, **kwargs
     ) -> list[Job]:
         """
         Create multiple jobs in the database.
 
         Args:
             db: Database session
-            project_id: ID of the project
+            account_id: ID of the account
             count: Number of jobs to create
             name_prefix: Optional prefix for job names
             **kwargs: Additional job attributes
@@ -81,13 +81,13 @@ class JobFactory:
         jobs: list[Job] = []
         for i in range(count):
             name = f"{name_prefix} {i + 1}" if name_prefix else f"Test Job {i + 1}"
-            job = JobFactory.create(db=db, project_id=project_id, name=name, **kwargs)
+            job = JobFactory.create(db=db, account_id=account_id, name=name, **kwargs)
             jobs.append(job)
         return jobs
 
     @staticmethod
     def build(
-        project_id: str,
+        account_id: str,
         name: Optional[str] = None,
         schedule: str = "0 9 * * *",
         job_type: int = 1,
@@ -99,7 +99,7 @@ class JobFactory:
         Build a job object without saving to database.
 
         Args:
-            project_id: ID of the project
+            account_id: ID of the account
             name: Name of the job
             schedule: Cron schedule expression
             job_type: Job type identifier
@@ -112,7 +112,7 @@ class JobFactory:
         """
         return Job(
             id=job_id or str(uuid.uuid4()),
-            project_id=project_id,
+            account_id=account_id,
             name=name or f"Test Job {uuid.uuid4().hex[:8]}",
             schedule=schedule,
             type=job_type,

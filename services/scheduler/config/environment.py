@@ -9,7 +9,7 @@ def init():
 
 
 def get_supabase_url() -> str:
-    """Get Supabase project URL from environment"""
+    """Get Supabase account URL from environment"""
     url = os.getenv("SUPABASE_PROJECT_URL")
     if not url:
         raise ValueError("SUPABASE_PROJECT_URL environment variable is not set")
@@ -32,6 +32,14 @@ def get_supabase_jwt_secret() -> str:
     return secret
 
 
+def get_chargebee_jwt_client_secret() -> str:
+    """Get Chargebee JWT secret for token verification"""
+    secret = os.getenv("CHARGEBEE_JWT_CLIENT_SECRET")
+    if not secret:
+        raise ValueError("CHARGEBEE_JWT_CLIENT_SECRET environment variable is not set")
+    return secret
+
+
 def get_frontend_url() -> str:
     """Get frontend URL for CORS and redirects"""
     return os.getenv("FRONTEND_URL", "http://localhost:3000")
@@ -40,3 +48,19 @@ def get_frontend_url() -> str:
 def get_auth_service_url() -> str:
     """Get authentication service URL"""
     return os.getenv("AUTH_SERVICE_URL", "http://localhost:8001")
+
+
+def get_chargebee_api_key() -> str:
+    """Get Chargebee API key from environment"""
+    key = os.getenv("CHARGEBEE_API_KEY")
+    if not key:
+        raise ValueError("CHARGEBEE_API_KEY environment variable is not set")
+    return key
+
+
+def get_chargebee_site() -> str:
+    """Get Chargebee site name from environment"""
+    site = os.getenv("CHARGEBEE_SITE")
+    if not site:
+        raise ValueError("CHARGEBEE_SITE environment variable is not set")
+    return site

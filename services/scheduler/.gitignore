@@ -112,12 +112,12 @@ ENV/
 env.bak/
 venv.bak/
 
-# Spyder project settings
-.spyderproject
-.spyproject
+# Spyder account settings
+.spyderaccount
+.spyaccount
 
-# Rope project settings
-.ropeproject
+# Rope account settings
+.ropeaccount
 
 # mkdocs documentation
 /site

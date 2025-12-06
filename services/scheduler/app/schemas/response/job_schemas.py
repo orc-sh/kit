@@ -16,7 +16,7 @@ class JobResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174000",
-                "project_id": "123e4567-e89b-12d3-a456-426614174001",
+                "account_id": "123e4567-e89b-12d3-a456-426614174001",
                 "name": "Daily Report Job",
                 "schedule": "0 9 * * *",
                 "type": 1,
@@ -31,7 +31,7 @@ class JobResponse(BaseModel):
     )
 
     id: str = Field(..., description="Job ID")
-    project_id: str = Field(..., description="Project ID this job belongs to")
+    account_id: str = Field(..., description="Account ID this job belongs to")
     name: str = Field(..., description="Name of the job")
     schedule: str = Field(..., description="Cron expression for scheduling")
     type: int = Field(..., description="Job type identifier")

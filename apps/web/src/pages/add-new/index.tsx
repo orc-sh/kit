@@ -54,6 +54,8 @@ type WebhookFormData = z.infer<typeof webhookSchema>;
 
 // Common cron presets
 const CRON_PRESETS = [
+  { label: 'Every 5 seconds', value: '*/5 * * * * *', description: 'Runs every 5 seconds' },
+  { label: 'Every 10 seconds', value: '*/10 * * * * *', description: 'Runs every 10 seconds' },
   { label: 'Every minute', value: '* * * * *', description: 'Runs every minute' },
   { label: 'Every 5 minutes', value: '*/5 * * * *', description: 'Runs every 5 minutes' },
   { label: 'Every hour', value: '0 * * * *', description: 'Runs at minute 0 of every hour' },
@@ -190,7 +192,7 @@ const AddNewPage = () => {
       });
 
       // Redirect to dashboard after success
-      setTimeout(() => navigate('/dashboard'), 1500);
+      setTimeout(() => navigate('/'), 1500);
     } catch (error) {
       console.error('Failed to create webhook:', error);
     }
@@ -200,21 +202,22 @@ const AddNewPage = () => {
     <TooltipProvider>
       <div className="min-h-screen bg-background p-6 pl-24">
         <div className="container mx-auto max-w-7xl">
+          {/* Header */}
+          <FadeIn>
+            <div className="mb-6">
+              <div className="flex items-center gap-2">
+                <Zap className="h-6 w-6 text-primary" />
+                <h1 className="text-3xl font-bold">Create Webhook</h1>
+              </div>
+              <p className="text-muted-foreground text-sm mt-2">
+                Schedule automated webhook calls to run on your custom schedule
+              </p>
+            </div>
+          </FadeIn>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column - Form */}
             <div className="lg:col-span-2 space-y-6">
-              <FadeIn>
-                <div className="flex items-center gap-2.5">
-                  <Zap className="h-7 w-7 text-primary" />
-                  <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-2.5">Create Webhook</h1>
-                    <p className="text-muted-foreground text-sm">
-                      Schedule automated webhook calls to run on your custom schedule
-                    </p>
-                  </div>
-                </div>
-              </FadeIn>
-
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                 {/* Basic Configuration Section */}
                 <FadeIn delay={0.1}>
@@ -605,7 +608,7 @@ const AddNewPage = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => navigate('/dashboard')}
+                      onClick={() => navigate('/')}
                       disabled={isSubmitting}
                       className="h-9"
                     >

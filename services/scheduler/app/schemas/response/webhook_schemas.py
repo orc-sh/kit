@@ -7,8 +7,8 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.response.account_schemas import AccountResponse
 from app.schemas.response.job_schemas import JobResponse
-from app.schemas.response.project_schemas import ProjectResponse
 
 
 class WebhookResponse(BaseModel):
@@ -58,7 +58,7 @@ class CronWebhookResponse(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "project": {
+                "account": {
                     "id": "123e4567-e89b-12d3-a456-426614174001",
                     "user_id": "123e4567-e89b-12d3-a456-426614174003",
                     "name": "John Doe",
@@ -66,7 +66,7 @@ class CronWebhookResponse(BaseModel):
                 },
                 "job": {
                     "id": "123e4567-e89b-12d3-a456-426614174000",
-                    "project_id": "123e4567-e89b-12d3-a456-426614174001",
+                    "account_id": "123e4567-e89b-12d3-a456-426614174001",
                     "name": "Daily Report Job",
                     "schedule": "0 9 * * *",
                     "type": 1,
@@ -90,6 +90,6 @@ class CronWebhookResponse(BaseModel):
         }
     )
 
-    project: ProjectResponse = Field(..., description="Project details")
+    account: AccountResponse = Field(..., description="Account details")
     job: JobResponse = Field(..., description="Created job details")
     webhook: WebhookResponse = Field(..., description="Created webhook details")
