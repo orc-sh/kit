@@ -16,7 +16,7 @@ const AuthCallbackPage = () => {
   // Navigate to dashboard once authentication is confirmed
   useEffect(() => {
     if (isAuthenticated && hasProcessedCallback.current && !error) {
-      navigate('/dashboard', { replace: true });
+      navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate, error]);
 
@@ -34,13 +34,13 @@ const AuthCallbackPage = () => {
 
       if (errorParam) {
         setError(errorDescription || 'Authentication failed');
-        setTimeout(() => navigate('/login'), 3000);
+        setTimeout(() => navigate('/sign-in'), 3000);
         return;
       }
 
       if (!code) {
         setError('No authorization code received');
-        setTimeout(() => navigate('/login'), 3000);
+        setTimeout(() => navigate('/sign-in'), 3000);
         return;
       }
 
@@ -56,7 +56,7 @@ const AuthCallbackPage = () => {
         onError: (err) => {
           console.error('Error processing OAuth callback:', err);
           setError('Failed to complete authentication. Please try again.');
-          setTimeout(() => navigate('/login'), 3000);
+          setTimeout(() => navigate('/sign-in'), 3000);
         },
       });
     };

@@ -8,7 +8,7 @@ class Webhook(Base):
     __tablename__ = "webhooks"
 
     id = Column(String(36), primary_key=True)
-    job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
+    job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=True)  # Nullable for load tests
     url = Column(String(1024), nullable=False)
     method = Column(
         Enum("GET", "POST", "PUT", "PATCH", "DELETE", name="http_method_enum"), nullable=False, server_default="POST"

@@ -69,7 +69,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001
 
 - `GET /health` - Service health check
 
-## Project Structure
+## Account Structure
 
 ```
 services/auth/
@@ -90,7 +90,7 @@ services/auth/
 
 ### Code Style
 
-This project follows PEP 8 guidelines. Use `black` for formatting and `flake8` for linting.
+This account follows PEP 8 guidelines. Use `black` for formatting and `flake8` for linting.
 
 ### Testing
 

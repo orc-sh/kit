@@ -1,33 +1,37 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.controllers import health_controller, project_controller, webhook_controller
-from config.environment import get_frontend_url, init
+from app.celery import scheduler
+from app.middleware.cors_middleware import cors
+from app.middleware.middleware_wrapper import middleware_wrapper
+from app.routes import router
+from config.environment import init
 
 # Initialize environment variables FIRST before importing modules that need them
 init()
 
+# Configure Celery to autodiscover tasks
+scheduler.autodiscover_tasks(["app.tasks"], force=True)
+
 # Create the FastAPI application
 app = FastAPI(title="Scheduler API", version="1.0.0")
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        get_frontend_url(),
-        "http://localhost:3000",
-        "http://localhost:8001",  # Auth service
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Prometheus metrics instrumentation
+Instrumentator().instrument(app).expose(app)
 
-# Include each router with a specific prefix and tags for better organization
-app.include_router(health_controller.router, prefix="", tags=["Health"])
-app.include_router(project_controller.router, prefix="/api/projects", tags=["Projects"])
-app.include_router(webhook_controller.router, prefix="/api/webhooks", tags=["Webhooks"])
+# CORS
+cors(app)
 
-# Note: Authentication routes have been moved to the separate auth service
-# running on port 8001. The scheduler service still uses the auth middleware
-# for validating JWT tokens on protected routes.
+# middlewares
+http_middleware = app.middleware("http")
+http_middleware(middleware_wrapper)
+
+# routes
+router(app)
+
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "service": "scheduler"}

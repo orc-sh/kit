@@ -6,10 +6,10 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from croniter import croniter
 from sqlalchemy.orm import Session
 
 from app.models.jobs import Job
+from app.utils.cron_validator import validate_cron_interval
 
 
 class JobService:
@@ -26,30 +26,35 @@ class JobService:
 
     def create_job(
         self,
-        project_id: str,
         name: str,
+        account_id: str,
         schedule: str,
         job_type: int,
         timezone: str = "UTC",
         enabled: bool = True,
+        user=None,  # Add user parameter
     ) -> Job:
         """
-        Create a new job for a project.
+        Create a new job for a account.
 
         Args:
-            project_id: ID of the project this job belongs to
+            account_id: ID of the account this job belongs to
             name: Name of the job
             schedule: Cron expression for scheduling
             job_type: Type identifier for the job
             timezone: Timezone for the schedule (default: UTC)
             enabled: Whether the job is enabled (default: True)
+            user: User instance for tier validation (optional)
 
         Returns:
             Created Job instance
 
         Raises:
-            ValueError: If the cron schedule is invalid
+            ValueError: If the cron schedule is invalid or doesn't meet tier requirements
         """
+        # Validate cron expression and tier requirements
+        validate_cron_interval(self.db, schedule, account_id)
+
         # Validate cron expression and calculate next run time
         try:
             next_run_at = self._calculate_next_run(schedule, timezone)
@@ -58,7 +63,7 @@ class JobService:
 
         job = Job(
             id=str(uuid.uuid4()),
-            project_id=project_id,
+            account_id=account_id,
             name=name,
             schedule=schedule,
             type=job_type,
@@ -83,19 +88,19 @@ class JobService:
         """
         return self.db.query(Job).filter(Job.id == job_id).first()
 
-    def get_jobs_by_project(self, project_id: str, skip: int = 0, limit: int = 100) -> List[Job]:
+    def get_jobs_by_account(self, account_id: str, skip: int = 0, limit: int = 100) -> List[Job]:
         """
-        Get all jobs for a project with pagination.
+        Get all jobs for a account with pagination.
 
         Args:
-            project_id: ID of the project
+            account_id: ID of the account
             skip: Number of records to skip (for pagination)
             limit: Maximum number of records to return
 
         Returns:
             List of Job instances
         """
-        return self.db.query(Job).filter(Job.project_id == project_id).offset(skip).limit(limit).all()
+        return self.db.query(Job).filter(Job.account_id == account_id).offset(skip).limit(limit).all()
 
     def update_job(
         self,
@@ -116,12 +121,13 @@ class JobService:
             job_type: New job type (optional)
             timezone: New timezone (optional)
             enabled: New enabled status (optional)
+            user: User instance for tier validation (optional)
 
         Returns:
             Updated Job instance if found, None otherwise
 
         Raises:
-            ValueError: If the new cron schedule is invalid
+            ValueError: If the new cron schedule is invalid or doesn't meet tier requirements
         """
         job = self.get_job(job_id)
         if not job:
@@ -137,8 +143,11 @@ class JobService:
         if enabled is not None:
             job.enabled = enabled  # type: ignore[assignment]
 
-        # If schedule changes, recalculate next_run_at
+        # If schedule changes, validate and recalculate next_run_at
         if schedule is not None:
+            # Validate cron expression and tier requirements
+            validate_cron_interval(self.db, schedule, str(job.account_id))
+
             try:
                 job.schedule = schedule  # type: ignore[assignment]
                 job.next_run_at = self._calculate_next_run(schedule, job.timezone)  # type: ignore[assignment]
@@ -169,22 +178,31 @@ class JobService:
 
     def _calculate_next_run(self, schedule: str, timezone: str = "UTC") -> datetime:
         """
-        Calculate the next run time based on cron schedule.
+        Calculate the next run time based on cron schedule, with seconds precision.
 
         Args:
             schedule: Cron expression
             timezone: Timezone for the calculation
 
         Returns:
-            Next run datetime
+            Next run datetime (with seconds level precision)
 
         Raises:
             Exception: If cron expression is invalid
         """
-        base_time = datetime.now()
-        cron = croniter(schedule, base_time)
-        next_run = cron.get_next(datetime)
-        return next_run
+        from datetime import datetime as dt
+
+        from app.utils.cron_utils import create_croniter
+
+        base_time = dt.utcnow().replace(microsecond=0)
+        # Explicitly enable second-level cron schedule support
+        cron = create_croniter(schedule, base_time, ret_type=float)  # get timestamp for seconds-level precision
+        next_run_ts = cron.get_next(ret_type=float)
+        next_run = dt.utcfromtimestamp(next_run_ts)
+        if not next_run:
+            raise ValueError("Invalid cron schedule")
+        # ensure no microseconds for seconds-level precision
+        return next_run.replace(microsecond=0)
 
 
 def get_job_service(db: Session) -> JobService:

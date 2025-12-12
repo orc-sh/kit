@@ -19,3 +19,9 @@ supabase
 pyjwt
 httpx
 croniter
+pytz
+redis
+chargebee
+pyyaml
+prometheus-fastapi-instrumentator
+prometheus-client

@@ -26,7 +26,7 @@ export interface CreateCronWebhookRequest {
   webhook: CreateWebhookRequest;
 }
 
-export interface Project {
+export interface Account {
   id: string;
   user_id: string;
   name: string;
@@ -35,7 +35,7 @@ export interface Project {
 
 export interface Job {
   id: string;
-  project_id: string;
+  account_id: string;
   name: string;
   schedule: string;
   type: number;
@@ -62,7 +62,41 @@ export interface Webhook {
 }
 
 export interface CronWebhookResponse {
-  project: Project;
+  account: Account;
   job: Job;
   webhook: Webhook;
+}
+
+export type JobExecutionStatus =
+  | 'queued'
+  | 'running'
+  | 'success'
+  | 'failure'
+  | 'timed_out'
+  | 'dead_letter';
+
+export interface JobExecution {
+  id: string;
+  job_id: string;
+  status: JobExecutionStatus;
+  started_at: string | null;
+  finished_at: string | null;
+  response_code: number | null;
+  response_body: string | null;
+  worker_id: string | null;
+  duration_ms: number | null;
+  error: string | null;
+  attempt: number;
+  created_at: string;
+}
+
+export interface PaginationMeta {
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface PaginatedJobExecutionsResponse {
+  data: JobExecution[];
+  meta: PaginationMeta;
 }

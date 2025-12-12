@@ -11,7 +11,7 @@ A modern scheduler application with Supabase OAuth authentication, FastAPI backe
 - ✅ Modern UI with shadcn/ui components
 - ✅ Task scheduling and management
 
-## 📁 Project Structure
+## 📁 Account Structure
 
 ```
 scheduler/
@@ -55,7 +55,7 @@ npm install
 
 **Backend** (`services/scheduler/.env`):
 ```env
-SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_URL=https://your-account.supabase.co
 SUPABASE_KEY=your-anon-key
 SUPABASE_JWT_SECRET=your-jwt-secret
 FRONTEND_URL=http://localhost:5173
@@ -155,7 +155,7 @@ See the [Authentication Setup Guide](./docs/AUTHENTICATION_SETUP.md#9-production
 
 ## 📝 License
 
-This project is licensed under the MIT License.
+This account is licensed under the MIT License.
 
 ## 🆘 Support
 

@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.services.webhook_service import WebhookService, get_webhook_service
-from tests.factories import JobFactory, ProjectFactory, WebhookFactory
+from tests.factories import AccountFactory, JobFactory, WebhookFactory
 
 
 @pytest.mark.unit
@@ -18,8 +18,8 @@ class TestWebhookServiceCreate:
 
     def test_create_webhook_success(self, db_session: Session, test_user):
         """Test creating a webhook successfully."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         service = WebhookService(db_session)
 
         webhook = service.create_webhook(
@@ -44,8 +44,8 @@ class TestWebhookServiceCreate:
 
     def test_create_webhook_generates_uuid(self, db_session: Session, test_user):
         """Test that webhook ID is auto-generated as UUID."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         service = WebhookService(db_session)
 
         webhook = service.create_webhook(
@@ -59,8 +59,8 @@ class TestWebhookServiceCreate:
 
     def test_create_webhook_minimal_fields(self, db_session: Session, test_user):
         """Test creating a webhook with minimal required fields."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         service = WebhookService(db_session)
 
         webhook = service.create_webhook(
@@ -79,8 +79,8 @@ class TestWebhookServiceCreate:
 
     def test_create_webhook_with_headers(self, db_session: Session, test_user):
         """Test creating a webhook with custom headers."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         service = WebhookService(db_session)
 
         headers = {
@@ -97,8 +97,8 @@ class TestWebhookServiceCreate:
 
     def test_create_webhook_with_query_params(self, db_session: Session, test_user):
         """Test creating a webhook with query parameters."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         service = WebhookService(db_session)
 
         query_params = {"api_key": "12345", "format": "json"}
@@ -112,8 +112,8 @@ class TestWebhookServiceCreate:
 
     def test_create_webhook_different_methods(self, db_session: Session, test_user):
         """Test creating webhooks with different HTTP methods."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         service = WebhookService(db_session)
 
         for method in ["GET", "POST", "PUT", "PATCH", "DELETE"]:
@@ -131,8 +131,8 @@ class TestWebhookServiceGet:
 
     def test_get_webhook_by_id_success(self, db_session: Session, test_user):
         """Test retrieving a specific webhook by ID."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         created_webhook = WebhookFactory.create(db_session, job.id, url="https://api.example.com/webhook")
 
         service = WebhookService(db_session)
@@ -152,8 +152,8 @@ class TestWebhookServiceGet:
 
     def test_get_webhooks_by_job_empty(self, db_session: Session, test_user):
         """Test retrieving webhooks when job has none."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         service = WebhookService(db_session)
 
         webhooks = service.get_webhooks_by_job(job.id)
@@ -162,8 +162,8 @@ class TestWebhookServiceGet:
 
     def test_get_webhooks_by_job_multiple(self, db_session: Session, test_user):
         """Test retrieving all webhooks for a job."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         WebhookFactory.create_batch(db_session, job.id, count=3)
 
         service = WebhookService(db_session)
@@ -174,9 +174,9 @@ class TestWebhookServiceGet:
 
     def test_get_webhooks_by_job_filters_by_job(self, db_session: Session, test_user):
         """Test that get_webhooks_by_job only returns the specified job's webhooks."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job1 = JobFactory.create(db_session, project.id, "Job 1")
-        job2 = JobFactory.create(db_session, project.id, "Job 2")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job1 = JobFactory.create(db_session, account.id, "Job 1")
+        job2 = JobFactory.create(db_session, account.id, "Job 2")
 
         WebhookFactory.create_batch(db_session, job1.id, count=2)
         WebhookFactory.create_batch(db_session, job2.id, count=3)
@@ -194,8 +194,8 @@ class TestWebhookServiceUpdate:
 
     def test_update_webhook_url(self, db_session: Session, test_user):
         """Test updating a webhook's URL."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         created_webhook = WebhookFactory.create(db_session, job.id, url="https://api.example.com/old")
 
         service = WebhookService(db_session)
@@ -207,8 +207,8 @@ class TestWebhookServiceUpdate:
 
     def test_update_webhook_method(self, db_session: Session, test_user):
         """Test updating a webhook's HTTP method."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         created_webhook = WebhookFactory.create(db_session, job.id, method="POST")
 
         service = WebhookService(db_session)
@@ -219,8 +219,8 @@ class TestWebhookServiceUpdate:
 
     def test_update_webhook_headers(self, db_session: Session, test_user):
         """Test updating a webhook's headers."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         created_webhook = WebhookFactory.create(db_session, job.id, headers={"Old": "Header"})
 
         new_headers = {"New": "Header", "Another": "Value"}
@@ -232,8 +232,8 @@ class TestWebhookServiceUpdate:
 
     def test_update_webhook_query_params(self, db_session: Session, test_user):
         """Test updating a webhook's query parameters."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         created_webhook = WebhookFactory.create(db_session, job.id, query_params={"old": "param"})
 
         new_params = {"new": "param", "another": "value"}
@@ -245,8 +245,8 @@ class TestWebhookServiceUpdate:
 
     def test_update_webhook_body_template(self, db_session: Session, test_user):
         """Test updating a webhook's body template."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         created_webhook = WebhookFactory.create(db_session, job.id, body_template='{"old": "template"}')
 
         service = WebhookService(db_session)
@@ -257,8 +257,8 @@ class TestWebhookServiceUpdate:
 
     def test_update_webhook_content_type(self, db_session: Session, test_user):
         """Test updating a webhook's content type."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         created_webhook = WebhookFactory.create(db_session, job.id, content_type="application/json")
 
         service = WebhookService(db_session)
@@ -269,8 +269,8 @@ class TestWebhookServiceUpdate:
 
     def test_update_webhook_multiple_fields(self, db_session: Session, test_user):
         """Test updating multiple webhook fields at once."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         created_webhook = WebhookFactory.create(db_session, job.id)
 
         service = WebhookService(db_session)
@@ -301,8 +301,8 @@ class TestWebhookServiceDelete:
 
     def test_delete_webhook_success(self, db_session: Session, test_user):
         """Test deleting a webhook successfully."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         created_webhook = WebhookFactory.create(db_session, job.id)
         webhook_id = created_webhook.id
 
@@ -338,8 +338,8 @@ class TestWebhookServiceGetAll:
 
     def test_get_all_webhooks_multiple(self, db_session: Session, test_user):
         """Test retrieving all webhooks without pagination."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         WebhookFactory.create_batch(db_session, job.id, count=5)
 
         service = WebhookService(db_session)
@@ -349,8 +349,8 @@ class TestWebhookServiceGetAll:
 
     def test_get_all_webhooks_with_limit(self, db_session: Session, test_user):
         """Test retrieving webhooks with limit."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         WebhookFactory.create_batch(db_session, job.id, count=10)
 
         service = WebhookService(db_session)
@@ -360,8 +360,8 @@ class TestWebhookServiceGetAll:
 
     def test_get_all_webhooks_with_offset(self, db_session: Session, test_user):
         """Test retrieving webhooks with offset."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         created_webhooks = WebhookFactory.create_batch(db_session, job.id, count=10)
 
         service = WebhookService(db_session)
@@ -375,8 +375,8 @@ class TestWebhookServiceGetAll:
 
     def test_get_all_webhooks_with_limit_and_offset(self, db_session: Session, test_user):
         """Test retrieving webhooks with both limit and offset."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job = JobFactory.create(db_session, project.id, "Test Job")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job = JobFactory.create(db_session, account.id, "Test Job")
         WebhookFactory.create_batch(db_session, job.id, count=20)
 
         service = WebhookService(db_session)
@@ -386,10 +386,10 @@ class TestWebhookServiceGetAll:
 
     def test_get_all_webhooks_multiple_jobs(self, db_session: Session, test_user):
         """Test retrieving webhooks across multiple jobs."""
-        project = ProjectFactory.create(db_session, test_user.id, "Test Project")
-        job1 = JobFactory.create(db_session, project.id, "Job 1")
-        job2 = JobFactory.create(db_session, project.id, "Job 2")
-        job3 = JobFactory.create(db_session, project.id, "Job 3")
+        account = AccountFactory.create(db_session, test_user.id, "Test Account")
+        job1 = JobFactory.create(db_session, account.id, "Job 1")
+        job2 = JobFactory.create(db_session, account.id, "Job 2")
+        job3 = JobFactory.create(db_session, account.id, "Job 3")
 
         WebhookFactory.create_batch(db_session, job1.id, count=3)
         WebhookFactory.create_batch(db_session, job2.id, count=4)

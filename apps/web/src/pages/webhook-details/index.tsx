@@ -1,7 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWebhook, useDeleteWebhook, useUpdateWebhook } from '@/hooks/use-webhooks';
+import { useJobExecutions } from '@/hooks/use-job-executions';
+import type { JobExecution } from '@/types/webhook.types';
 import { FadeIn } from '@/components/motion/fade-in';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,70 +21,77 @@ import {
 import {
   Pencil,
   Trash2,
-  ExternalLink,
   CheckCircle2,
   XCircle,
-  ChevronDown,
-  ChevronRight,
-  Play,
   AlertCircle,
   Timer,
+  Webhook,
+  Copy,
+  Check,
+  PlayCircle,
+  CheckCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { formatDistanceToNow, format } from 'date-fns';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
 import { CartesianGrid, XAxis, YAxis, Bar, BarChart, Cell } from 'recharts';
+import { motion, AnimatePresence } from 'motion/react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
-// Dummy execution logs data
-const generateDummyExecutions = () => {
-  const statuses = ['success', 'error', 'timeout'];
-  const statusCodes = [200, 201, 400, 404, 500, 502, 504];
+// Transform API execution data to frontend format
+const transformExecution = (execution: any) => {
+  const statusCode =
+    execution.response_code ||
+    (execution.status === 'success' ? 200 : execution.status === 'failure' ? 500 : 0);
+  const isSuccess = statusCode >= 200 && statusCode < 300;
+  const timestamp = new Date(execution.created_at);
+  const startedAt = execution.started_at ? new Date(execution.started_at) : null;
+  const finishedAt = execution.finished_at ? new Date(execution.finished_at) : null;
 
-  return Array.from({ length: 15 }, (_, i) => {
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    const statusCode = statusCodes[Math.floor(Math.random() * statusCodes.length)];
-    const isSuccess = statusCode >= 200 && statusCode < 300;
-    const timestamp = new Date(Date.now() - i * 3600000 - Math.random() * 3600000);
+  // Parse response body if it's a string, otherwise use as-is
+  let responseBody = execution.response_body;
+  if (responseBody && typeof responseBody === 'string') {
+    try {
+      // Try to parse as JSON and format it nicely
+      const parsed = JSON.parse(responseBody);
+      responseBody = JSON.stringify(parsed, null, 2);
+    } catch {
+      // If not JSON, use as-is
+    }
+  }
 
-    return {
-      id: `exec-${i + 1}`,
-      timestamp,
-      status: isSuccess ? 'success' : status,
-      statusCode,
-      duration: Math.floor(Math.random() * 2000) + 100,
-      response: isSuccess
-        ? {
-            status: statusCode,
-            body: JSON.stringify(
-              {
-                message: 'Request processed successfully',
-                data: { id: Math.random().toString(36).substring(7) },
-              },
-              null,
-              2
-            ),
-            headers: {
-              'content-type': 'application/json',
-              'x-request-id': Math.random().toString(36).substring(7),
-            },
-          }
-        : {
-            status: statusCode,
-            body: JSON.stringify(
-              {
-                error: statusCode >= 500 ? 'Internal server error' : 'Bad request',
-                message: 'Request failed',
-              },
-              null,
-              2
-            ),
-            headers: {
-              'content-type': 'application/json',
-            },
-          },
-    };
-  }).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  return {
+    id: execution.id,
+    timestamp,
+    startedAt,
+    finishedAt,
+    status:
+      execution.status === 'success'
+        ? 'success'
+        : execution.status === 'failure'
+          ? 'error'
+          : execution.status === 'timed_out'
+            ? 'timeout'
+            : execution.status === 'queued'
+              ? 'queued'
+              : execution.status === 'running'
+                ? 'running'
+                : 'error',
+    statusCode,
+    duration: execution.duration_ms ?? null,
+    attempt: execution.attempt ?? null,
+    error: execution.error ?? null,
+    response: {
+      status: statusCode,
+      body: responseBody ?? null,
+      headers: {
+        'content-type': 'application/json',
+      },
+    },
+  };
 };
 
 const WebhookDetailsPage = () => {
@@ -92,30 +102,160 @@ const WebhookDetailsPage = () => {
   const updateWebhook = useUpdateWebhook();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [expandedExecution, setExpandedExecution] = useState<string | null>(null);
-  const [executions] = useState(generateDummyExecutions());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadedExecutions, setLoadedExecutions] = useState<JobExecution[]>([]);
+  const [totalExecutions, setTotalExecutions] = useState<number>(0);
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const executionsListRef = useRef<HTMLDivElement>(null);
+  const hasMoreRef = useRef(true);
+  const isLoadingMoreRef = useRef(false);
+  const isLoadingMoreExecutionsRef = useRef(false);
 
-  // Handle toggle enable/disable
-  const handleToggleEnabled = async (newEnabled: boolean) => {
-    if (!id) return;
-    try {
-      await updateWebhook.mutateAsync({
-        id,
-        data: {
-          job: {
-            enabled: newEnabled,
-          },
-        } as any,
-      });
-    } catch (error) {
-      console.error('Failed to toggle webhook status:', error);
+  const {
+    data: executionsData,
+    isLoading: isLoadingExecutions,
+    isRefetching: isRefetchingExecutions,
+    refetch: refetchExecutions,
+  } = useJobExecutions(id, 20, 0);
+
+  // Compute offset for loading more - only load when currentOffset > 0
+  const loadMoreOffset = useMemo(() => {
+    return currentOffset > 0 ? currentOffset : undefined;
+  }, [currentOffset]);
+
+  // Load more executions hook (only enabled when loading more)
+  const { data: moreExecutionsData, isLoading: isLoadingMoreExecutions } = useJobExecutions(
+    id,
+    20,
+    loadMoreOffset
+  );
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+
+  useEffect(() => {
+    isLoadingMoreRef.current = isLoadingMore;
+  }, [isLoadingMore]);
+
+  useEffect(() => {
+    isLoadingMoreExecutionsRef.current = isLoadingMoreExecutions;
+  }, [isLoadingMoreExecutions]);
+
+  // Initialize loaded executions when first data loads or on refresh
+  useEffect(() => {
+    if (executionsData && currentOffset === 0 && loadedExecutions.length === 0) {
+      // Only initialize if we don't have loaded executions yet
+      setLoadedExecutions(executionsData.data);
+      setTotalExecutions(executionsData.meta.total);
+      setHasMore(executionsData.data.length === 20);
+      setIsLoadingMore(false);
+    } else if (executionsData && currentOffset === 0 && isRefreshing) {
+      // Force update on refresh even if we have data
+      setLoadedExecutions(executionsData.data);
+      setTotalExecutions(executionsData.meta.total);
+      setHasMore(executionsData.data.length === 20);
+      setIsLoadingMore(false);
     }
-  };
+  }, [executionsData, currentOffset, loadedExecutions.length, isRefreshing]);
 
-  // Prepare chart data - one bar per execution
+  // Append more executions when loading more
+  useEffect(() => {
+    if (moreExecutionsData && currentOffset > 0 && moreExecutionsData.data.length > 0) {
+      setLoadedExecutions((prev) => {
+        // Avoid duplicates by checking IDs
+        const existingIds = new Set(prev.map((e) => e.id));
+        const newExecutions = moreExecutionsData.data.filter((e) => !existingIds.has(e.id));
+        return [...prev, ...newExecutions];
+      });
+      // Don't update totalExecutions - we already have it from the initial load
+      setHasMore(moreExecutionsData.data.length === 20);
+      setIsLoadingMore(false);
+    } else if (moreExecutionsData && currentOffset > 0 && moreExecutionsData.data.length === 0) {
+      // No more data available
+      setHasMore(false);
+      setIsLoadingMore(false);
+    }
+  }, [moreExecutionsData, currentOffset]);
+
+  // Transform API executions to frontend format
+  const executions = useMemo(() => {
+    if (loadedExecutions.length === 0) return [];
+    return loadedExecutions
+      .map(transformExecution)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }, [loadedExecutions]);
+
+  // Load more executions when scrolling to bottom
+  const loadMore = useCallback(() => {
+    if (!isLoadingMoreRef.current && hasMoreRef.current && !isLoadingMoreExecutionsRef.current) {
+      setIsLoadingMore(true);
+      setCurrentOffset((prev) => {
+        const nextOffset = prev + 20;
+        return nextOffset;
+      });
+    }
+  }, []);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    // Only set up observer if we have more data to load
+    if (!hasMoreRef.current) {
+      return;
+    }
+
+    const scrollContainer = executionsListRef.current;
+    const triggerElement = loadMoreRef.current;
+
+    if (!scrollContainer || !triggerElement) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (
+          entry.isIntersecting &&
+          hasMoreRef.current &&
+          !isLoadingMoreRef.current &&
+          !isLoadingMoreExecutionsRef.current
+        ) {
+          loadMore();
+        }
+      },
+      {
+        root: scrollContainer,
+        rootMargin: '100px',
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(triggerElement);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [loadMore, executions.length, hasMore]);
+
+  // Reset when webhook ID changes
+  useEffect(() => {
+    setLoadedExecutions([]);
+    setTotalExecutions(0);
+    setCurrentOffset(0);
+    setHasMore(true);
+    setIsLoadingMore(false);
+  }, [id]);
+
+  // Prepare chart data - one bar per execution (limit to first 30)
   const chartData = useMemo(() => {
-    return executions.map((exec, index) => ({
+    return executions.slice(0, 30).map((exec, index) => ({
       name: `#${executions.length - index}`,
-      duration: exec.duration,
+      duration: exec.duration ?? 0, // Use 0 for chart if duration is null
       status: exec.statusCode >= 200 && exec.statusCode < 300 ? 'success' : 'error',
       statusCode: exec.statusCode,
       timestamp: format(exec.timestamp, 'MMM dd, HH:mm:ss'),
@@ -127,25 +267,47 @@ const WebhookDetailsPage = () => {
     const total = executions.length;
     const success = executions.filter((e) => e.statusCode >= 200 && e.statusCode < 300).length;
     const error = total - success;
-    const avgDuration = Math.round(executions.reduce((sum, e) => sum + e.duration, 0) / total);
+    const executionsWithDuration = executions.filter((e) => e.duration !== null);
+    const avgDuration =
+      executionsWithDuration.length > 0
+        ? Math.round(
+            executionsWithDuration.reduce((sum, e) => sum + (e.duration ?? 0), 0) /
+              executionsWithDuration.length
+          )
+        : 0;
     const successRate = total > 0 ? Math.round((success / total) * 100) : 0;
 
     return { total, success, error, avgDuration, successRate };
   }, [executions]);
 
-  // Format HTTP method with normal colors
-  const getMethodBadge = (method: string) => {
-    return (
-      <Badge
-        variant="outline"
-        className="font-mono text-xs bg-muted/30 text-foreground border-border"
-      >
-        {method}
-      </Badge>
-    );
-  };
+  const getStatusBadge = (status: string, statusCode: number) => {
+    // Handle status-based badges first (for queued, running, etc.)
+    if (status === 'queued') {
+      return (
+        <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/20">
+          <Timer className="h-3 w-3 mr-1" />
+          Queued
+        </Badge>
+      );
+    }
+    if (status === 'running') {
+      return (
+        <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/20">
+          <Timer className="h-3 w-3 mr-1" />
+          Running
+        </Badge>
+      );
+    }
+    if (status === 'timeout') {
+      return (
+        <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Timeout
+        </Badge>
+      );
+    }
 
-  const getStatusBadge = (_status: string, statusCode: number) => {
+    // Handle HTTP status code-based badges
     if (statusCode >= 200 && statusCode < 300) {
       return (
         <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
@@ -164,7 +326,7 @@ const WebhookDetailsPage = () => {
       return (
         <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/20">
           <XCircle className="h-3 w-3 mr-1" />
-          {statusCode}
+          {statusCode || 'Error'}
         </Badge>
       );
     }
@@ -174,8 +336,40 @@ const WebhookDetailsPage = () => {
     if (id) {
       deleteWebhook.mutate(id, {
         onSuccess: () => {
-          navigate('/dashboard');
+          navigate('/');
         },
+      });
+    }
+  };
+
+  const handleCopy = (text: string, executionId: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(executionId);
+    toast('Copied!', {
+      description: 'Content copied to clipboard',
+    });
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // Handle toggle enable/disable
+  const handleToggleEnabled = async (newEnabled: boolean) => {
+    if (!id) return;
+    try {
+      await updateWebhook.mutateAsync({
+        id,
+        data: {
+          job: {
+            enabled: newEnabled,
+          },
+        } as any,
+      });
+      toast(newEnabled ? 'Webhook enabled' : 'Webhook disabled', {
+        description: `Webhook has been ${newEnabled ? 'enabled' : 'disabled'}`,
+      });
+    } catch (error) {
+      console.error('Failed to toggle webhook status:', error);
+      toast.error('Error', {
+        description: 'Failed to update webhook status',
       });
     }
   };
@@ -183,7 +377,7 @@ const WebhookDetailsPage = () => {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background p-6 pl-24">
+      <div className="min-h-screen bg-background p-8 pl-32">
         <div className="container mx-auto space-y-6 max-w-7xl">
           <Skeleton className="h-10 w-32 mb-4" />
           <Skeleton className="h-16 w-full" />
@@ -200,7 +394,7 @@ const WebhookDetailsPage = () => {
   // Error state
   if (isError || !webhook) {
     return (
-      <div className="min-h-screen bg-background p-6 pl-24">
+      <div className="min-h-screen bg-background p-8 pl-32">
         <div className="container mx-auto max-w-4xl">
           <FadeIn>
             <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-6 text-center">
@@ -209,7 +403,7 @@ const WebhookDetailsPage = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 The webhook you're looking for could not be found.
               </p>
-              <Button onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
+              <Button onClick={() => navigate('/')}>Return to Dashboard</Button>
             </div>
           </FadeIn>
         </div>
@@ -220,44 +414,148 @@ const WebhookDetailsPage = () => {
   const job = webhook.job;
 
   return (
-    <div className="min-h-screen bg-background p-6 pl-24">
-      <div className="container mx-auto space-y-8 max-w-7xl">
+    <div className="min-h-screen bg-background p-8 pl-32">
+      <div className="container mx-auto space-y-6 max-w-7xl">
         {/* Header */}
         <FadeIn>
           <div className="space-y-4">
-            {/* Title and Actions */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                  {job?.name || 'Unnamed Webhook'}
-                </h1>
-                <p className="text-sm text-muted-foreground">{webhook.url}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate(`/edit/${webhook.id}`)}
-                  size="sm"
-                  className="h-9 hover:bg-transparent hover:text-muted-foreground hover:border-muted-foreground/50"
-                >
-                  <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setDeleteDialogOpen(true)}
-                  size="sm"
-                  className="h-9 hover:bg-transparent hover:border-destructive/50 hover:text-destructive/70"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+            <Card className="rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm">
+              <CardContent className="flex items-center justify-between gap-6 p-4">
+                {/* Left Side - Information */}
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+                    <Webhook className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-sm text-foreground truncate">
+                        {job?.name || 'Unnamed Webhook'}
+                      </h3>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(webhook.created_at), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <code className="truncate font-mono">{webhook.url}</code>
+                        <button
+                          className="flex-shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-all hover:text-foreground group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopy(webhook.url, webhook.id);
+                          }}
+                        >
+                          {copiedId === webhook.id ? (
+                            <Check className="h-3 w-3" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Side - Actions */}
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="flex items-center gap-1">
+                    {/* Edit Button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => navigate(`/edit/${webhook.id}`)}
+                      className="h-9 group"
+                    >
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </Button>
+                    {/* Delete Button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeleteDialogOpen(true)}
+                      className="h-9 group"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-destructive transition-colors" />
+                    </Button>
+                  </div>
+                  {/* Enable/Disable Toggle */}
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={job?.enabled ?? false}
+                      onCheckedChange={handleToggleEnabled}
+                      disabled={updateWebhook.isPending}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Stats Tiles */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <Card className="rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Total Executions</p>
+                      <p className="text-2xl font-semibold">{summaryStats.total}</p>
+                    </div>
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <PlayCircle className="h-5 w-5 text-primary" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Success Rate</p>
+                      <p className="text-2xl font-semibold">{summaryStats.successRate}%</p>
+                    </div>
+                    <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Avg Duration</p>
+                      <p className="text-2xl font-semibold">{summaryStats.avgDuration}ms</p>
+                    </div>
+                    <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                      <Timer className="h-5 w-5 text-blue-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-xl border-border/50 bg-card transition-all shadow-none duration-200 hover:border-border hover:shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Errors</p>
+                      <p className="text-2xl font-semibold text-red-600">{summaryStats.error}</p>
+                    </div>
+                    <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                      <XCircle className="h-5 w-5 text-red-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </FadeIn>
 
         {/* Execution Overview Chart */}
         <FadeIn delay={0.1}>
-          <Card className="border">
+          <Card className="shadow-none border-border/50 bg-card transition-all duration-200 hover:border-border hover:shadow-sm">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -370,295 +668,423 @@ const WebhookDetailsPage = () => {
           </Card>
         </FadeIn>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Execution Logs */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Execution Logs */}
-            <FadeIn delay={0.3}>
-              <Card className="border">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-foreground">Execution Logs</h3>
-                    <Badge variant="outline" className="text-xs">
-                      {executions.length} executions
-                    </Badge>
-                  </div>
-                  <div className="space-y-1">
-                    {executions.map((execution) => (
+        {/* Main Content - Execution Logs with Animated Details */}
+        <div>
+          <motion.div
+            className="grid gap-6 relative"
+            initial={false}
+            animate={{
+              gridTemplateColumns: expandedExecution ? '0.3fr 0.7fr' : '1fr',
+            }}
+            transition={{
+              duration: 0.4,
+              ease: [0.16, 1, 0.3, 1],
+            }}
+          >
+            {/* Execution Logs List */}
+            <motion.div className="min-w-0" layout>
+              <FadeIn delay={0.2}>
+                <Card className="shadow-none bg-transparent border-none">
+                  <CardHeader className="py-4 px-0">
+                    <CardTitle>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold">Execution Logs</p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={async () => {
+                              setIsRefreshing(true);
+                              try {
+                                // Reset pagination state first
+                                setCurrentOffset(0);
+                                setHasMore(true);
+                                setIsLoadingMore(false);
+                                setLoadedExecutions([]);
+                                // Add intentional delay to show spinner animation
+                                await new Promise((resolve) => setTimeout(resolve, 400));
+                                // Refetch will trigger the initialization effect
+                                const result = await refetchExecutions();
+                                // Ensure data is set even if refetch returns cached data
+                                if (
+                                  result.data &&
+                                  result.data.data &&
+                                  result.data.data.length > 0
+                                ) {
+                                  setLoadedExecutions(result.data.data);
+                                  setTotalExecutions(result.data.meta.total);
+                                  setHasMore(result.data.data.length === 20);
+                                } else {
+                                  setTotalExecutions(0);
+                                  setHasMore(false);
+                                }
+                              } finally {
+                                setIsRefreshing(false);
+                              }
+                            }}
+                            disabled={isRefetchingExecutions || isRefreshing}
+                            className="h-6 w-6"
+                            title="Refresh execution logs"
+                          >
+                            <RefreshCw
+                              className={`h-3.5 w-3.5 text-muted-foreground ${
+                                isRefetchingExecutions || isRefreshing ? 'animate-spin' : ''
+                              }`}
+                            />
+                          </Button>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {isLoadingExecutions
+                            ? '...'
+                            : `${executions.length} of ${totalExecutions} total executions`}
+                        </span>
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {isLoadingExecutions ? (
+                      <div className="space-y-2 p-4">
+                        {[...Array(5)].map((_, i) => (
+                          <Skeleton key={i} className="h-16 w-full" />
+                        ))}
+                      </div>
+                    ) : executions.length === 0 ? (
+                      <div className="py-8 px-4 text-center text-sm text-muted-foreground">
+                        <p className="text-sm">No executions yet</p>
+                        <p className="text-xs mt-1">
+                          Executions will appear here once the webhook runs
+                        </p>
+                      </div>
+                    ) : (
                       <div
-                        key={execution.id}
-                        className="border rounded-md hover:bg-muted/30 transition-colors"
+                        ref={executionsListRef}
+                        className="max-h-[calc(100vh-200px)] overflow-y-auto scrollbar-primary space-y-2 pr-2"
                       >
-                        <button
-                          onClick={() =>
-                            setExpandedExecution(
-                              expandedExecution === execution.id ? null : execution.id
-                            )
-                          }
-                          className="w-full p-3 flex items-center justify-between text-left"
-                        >
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="shrink-0">
-                              {expandedExecution === execution.id ? (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        {executions.map((execution) => (
+                          <button
+                            key={execution.id}
+                            onClick={() =>
+                              setExpandedExecution(
+                                expandedExecution === execution.id ? null : execution.id
+                              )
+                            }
+                            className={cn(
+                              'w-full text-left p-4 border border-border/50 rounded-lg transition-colors hover:bg-muted/50',
+                              expandedExecution === execution.id
+                                ? 'bg-primary/10 border-primary'
+                                : ''
+                            )}
+                          >
+                            <div className="space-y-2">
+                              {/* First row: Status, Duration, Timestamp */}
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+                                  {getStatusBadge(execution.status, execution.statusCode)}
+                                  {execution.duration !== null && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Timer className="h-3 w-3" />
+                                      {execution.duration}ms
+                                    </div>
+                                  )}
+                                  {execution.attempt !== null && execution.attempt > 1 && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[10px] h-4 px-1.5 bg-orange-500/10 text-orange-600 border-orange-500/20 whitespace-nowrap"
+                                    >
+                                      Attempt {execution.attempt}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex-shrink-0 text-right">
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatDistanceToNow(execution.timestamp, { addSuffix: true })}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Second row: Started, Finished times */}
+                              {(execution.startedAt || execution.finishedAt) && (
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                                  {execution.startedAt && (
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[10px]">Started:</span>
+                                      <span className="text-[10px] font-mono">
+                                        {format(execution.startedAt, 'HH:mm:ss')}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {execution.finishedAt && (
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[10px]">Finished:</span>
+                                      <span className="text-[10px] font-mono">
+                                        {format(execution.finishedAt, 'HH:mm:ss')}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </div>
-                            <div className="shrink-0">
-                              <Play className="h-3.5 w-3.5 text-muted-foreground" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                {getStatusBadge(execution.status, execution.statusCode)}
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(execution.timestamp, { addSuffix: true })}
-                                </span>
+                          </button>
+                        ))}
+
+                        {/* Load more trigger and shimmer loading */}
+                        {hasMore && (
+                          <div
+                            ref={loadMoreRef}
+                            className="py-4 min-h-[40px] flex items-center justify-center"
+                          >
+                            {isLoadingMore || isLoadingMoreExecutions ? (
+                              <div className="space-y-2 w-full">
+                                {[...Array(3)].map((_, i) => (
+                                  <div
+                                    key={`skeleton-${i}`}
+                                    className="p-4 border border-border/50 rounded-lg"
+                                  >
+                                    <Skeleton className="h-4 w-24 mb-2" />
+                                    <Skeleton className="h-3 w-full" />
+                                    <Skeleton className="h-3 w-3/4 mt-2" />
+                                  </div>
+                                ))}
                               </div>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {execution.timestamp.toLocaleString()}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-3 shrink-0">
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Timer className="h-3 w-3" />
-                                {execution.duration}ms
-                              </div>
-                            </div>
+                            ) : (
+                              <div className="h-10 w-full" />
+                            )}
                           </div>
-                        </button>
-                        {expandedExecution === execution.id && (
-                          <div className="border-t p-4 bg-muted/10 space-y-3">
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-2">
-                                Response ({execution.response.status})
-                              </p>
-                              <div className="rounded-md border bg-background">
-                                <div className="border-b p-2 bg-muted/30">
-                                  <p className="text-xs font-medium text-foreground">Headers</p>
-                                </div>
-                                <div className="p-3">
-                                  <div className="space-y-1">
-                                    {Object.entries(execution.response.headers).map(
-                                      ([key, value]) => (
-                                        <div key={key} className="flex gap-2 text-xs">
-                                          <code className="text-muted-foreground font-mono">
-                                            {key}:
-                                          </code>
-                                          <code className="text-foreground font-mono">{value}</code>
-                                        </div>
-                                      )
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </FadeIn>
+            </motion.div>
+
+            {/* Right Column - Expanded Execution Details */}
+            <AnimatePresence mode="wait">
+              {expandedExecution && (
+                <motion.div
+                  key={expandedExecution}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{
+                    duration: 0.4,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  className="min-w-0"
+                  layout
+                >
+                  {(() => {
+                    const execution = executions.find((e) => e.id === expandedExecution);
+                    if (!execution) return null;
+                    return (
+                      <Card className="shadow-none bg-transparent border-none">
+                        <CardHeader className="py-4 px-0">
+                          <CardTitle className="text-sm font-semibold">Execution Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="bg-card rounded-lg p-4 border border-border/50 space-y-4">
+                          {/* Detailed Summary Section */}
+                          <div className="space-y-4 pb-4 border-b border-border/50">
+                            {/* Single Row: Status, Duration, Started, Finished */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                              {/* Status Card */}
+                              <div className="flex flex-col gap-2 p-3 rounded-lg border border-border/50 bg-muted/30">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-1.5 rounded-md bg-primary/10">
+                                    {execution.status === 'success' ? (
+                                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                                    ) : execution.status === 'failure' ? (
+                                      <XCircle className="h-3.5 w-3.5 text-red-600" />
+                                    ) : execution.status === 'timeout' ? (
+                                      <AlertCircle className="h-3.5 w-3.5 text-orange-600" />
+                                    ) : (
+                                      <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
                                     )}
                                   </div>
+                                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                                    Status
+                                  </span>
+                                </div>
+                                <div className="mt-1">
+                                  {getStatusBadge(execution.status, execution.statusCode)}
                                 </div>
                               </div>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-2">Body</p>
-                              <pre className="text-xs font-mono p-3 rounded-md bg-background border overflow-x-auto">
-                                {execution.response.body}
-                              </pre>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </FadeIn>
-          </div>
 
-          {/* Right Column - Status, Configuration & Metadata */}
-          <div className="space-y-4">
-            {/* Status Component */}
-            <FadeIn delay={0.15}>
-              <Card className="border">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-foreground mb-0.5">Status</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {job?.enabled ? 'Webhook is active' : 'Webhook is disabled'}
-                      </p>
-                    </div>
-                    <Switch
-                      checked={job?.enabled ?? false}
-                      onCheckedChange={handleToggleEnabled}
-                      disabled={updateWebhook.isPending}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </FadeIn>
-
-            {/* Configuration Details */}
-            <FadeIn delay={0.2}>
-              <Card className="border">
-                <CardContent className="p-5">
-                  <h3 className="text-sm font-semibold mb-4 text-foreground">Configuration</h3>
-                  <div className="space-y-3">
-                    {/* HTTP Method */}
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">HTTP Method</p>
-                      <div>{getMethodBadge(webhook.method)}</div>
-                    </div>
-
-                    {/* Schedule */}
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">Schedule</p>
-                      <code className="text-xs font-mono text-foreground">
-                        {job?.schedule || 'N/A'}
-                      </code>
-                    </div>
-
-                    {/* Timezone */}
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">Timezone</p>
-                      <span className="text-xs text-foreground">{job?.timezone || 'N/A'}</span>
-                    </div>
-
-                    {/* Webhook URL */}
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs text-muted-foreground shrink-0">Webhook URL</p>
-                      <div className="flex flex-row-reverse items-center gap-1.5 flex-1 min-w-0">
-                        <a
-                          href={webhook.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
-                        <code className="text-xs font-mono break-all text-foreground">
-                          {webhook.url}
-                        </code>
-                      </div>
-                    </div>
-
-                    {/* Content Type */}
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">Content Type</p>
-                      <code className="text-xs font-mono text-foreground">
-                        {webhook.content_type}
-                      </code>
-                    </div>
-
-                    {(webhook.headers && Object.keys(webhook.headers).length > 0) ||
-                    (webhook.query_params && Object.keys(webhook.query_params).length > 0) ||
-                    webhook.body_template ? (
-                      <div className="pt-3 border-t space-y-3">
-                        {webhook.headers && Object.keys(webhook.headers).length > 0 && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-2">
-                              Headers ({Object.keys(webhook.headers).length})
-                            </p>
-                            <div className="space-y-1.5">
-                              {Object.entries(webhook.headers).map(([key, value]) => (
-                                <div key={key} className="flex items-start gap-2 text-xs">
-                                  <code className="font-mono text-muted-foreground shrink-0">
-                                    {key}:
-                                  </code>
-                                  <code className="font-mono text-foreground break-all flex-1">
-                                    {value}
-                                  </code>
+                              {/* Duration Card */}
+                              {execution.duration !== null && (
+                                <div className="flex flex-col gap-2 p-3 rounded-lg border border-border/50 bg-muted/30">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-md bg-purple-500/10">
+                                      <Timer className="h-3.5 w-3.5 text-purple-600" />
+                                    </div>
+                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                                      Duration
+                                    </span>
+                                  </div>
+                                  <div className="mt-1">
+                                    <span className="text-sm font-semibold">
+                                      {execution.duration}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground ml-1">ms</span>
+                                  </div>
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                              )}
 
-                        {webhook.query_params && Object.keys(webhook.query_params).length > 0 && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-2">
-                              Query Parameters ({Object.keys(webhook.query_params).length})
-                            </p>
-                            <div className="space-y-1.5">
-                              {Object.entries(webhook.query_params).map(([key, value]) => (
-                                <div key={key} className="flex items-start gap-2 text-xs">
-                                  <code className="font-mono text-muted-foreground shrink-0">
-                                    {key} =
-                                  </code>
-                                  <code className="font-mono text-foreground break-all flex-1">
-                                    {value}
-                                  </code>
+                              {/* Started Time */}
+                              {execution.startedAt && (
+                                <div className="flex flex-col gap-2 p-3 rounded-lg border border-border/50 bg-muted/30">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-md bg-amber-500/10">
+                                      <PlayCircle className="h-3.5 w-3.5 text-amber-600" />
+                                    </div>
+                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                                      Started
+                                    </span>
+                                  </div>
+                                  <div className="mt-1">
+                                    <p className="text-xs font-semibold">
+                                      {format(execution.startedAt, 'MMM dd, yyyy')}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                                      {format(execution.startedAt, 'HH:mm:ss.SSS')}
+                                    </p>
+                                  </div>
                                 </div>
-                              ))}
+                              )}
+
+                              {/* Finished Time */}
+                              {execution.finishedAt && (
+                                <div className="flex flex-col gap-2 p-3 rounded-lg border border-border/50 bg-muted/30">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-md bg-teal-500/10">
+                                      <CheckCircle className="h-3.5 w-3.5 text-teal-600" />
+                                    </div>
+                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                                      Finished
+                                    </span>
+                                  </div>
+                                  <div className="mt-1">
+                                    <p className="text-xs font-semibold">
+                                      {format(execution.finishedAt, 'MMM dd, yyyy')}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                                      {format(execution.finishedAt, 'HH:mm:ss.SSS')}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        )}
 
-                        {webhook.body_template && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-2">Body Template</p>
-                            <pre className="text-xs font-mono p-3 rounded-md bg-muted/20 overflow-x-auto">
-                              {webhook.body_template}
-                            </pre>
-                          </div>
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-                </CardContent>
-              </Card>
-            </FadeIn>
+                          {/* Error message if failed */}
+                          {execution.error && (
+                            <div className="p-3 rounded bg-destructive/5 border border-destructive/20">
+                              <p className="text-xs font-semibold text-destructive mb-1">Error:</p>
+                              <p className="text-xs text-destructive break-words whitespace-pre-wrap">
+                                {execution.error}
+                              </p>
+                            </div>
+                          )}
 
-            {/* Metadata */}
-            <FadeIn delay={0.25}>
-              <Card className="border sticky top-6">
-                <CardContent className="p-5">
-                  <h3 className="text-sm font-semibold mb-4 text-foreground">Metadata</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Created</p>
-                      <p className="text-sm font-medium">
-                        {formatDistanceToNow(new Date(webhook.created_at), { addSuffix: true })}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(webhook.created_at).toLocaleString()}
-                      </p>
-                    </div>
+                          <Tabs defaultValue="headers" className="w-full">
+                            <TabsList className="grid w-full grid-cols-2">
+                              <TabsTrigger value="headers">Headers</TabsTrigger>
+                              <TabsTrigger value="body">Body</TabsTrigger>
+                            </TabsList>
 
-                    <div className="border-t pt-4">
-                      <p className="text-xs text-muted-foreground mb-1">Last Updated</p>
-                      <p className="text-sm font-medium">
-                        {formatDistanceToNow(new Date(webhook.updated_at), { addSuffix: true })}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(webhook.updated_at).toLocaleString()}
-                      </p>
-                    </div>
+                            <TabsContent value="headers" className="mt-4">
+                              {execution.response.headers &&
+                              Object.keys(execution.response.headers).length > 0 ? (
+                                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                                  {Object.entries(execution.response.headers).map(
+                                    ([key, value]) => (
+                                      <div
+                                        key={key}
+                                        className="flex flex-col gap-1 p-2 rounded border border-border/50 bg-muted/30"
+                                      >
+                                        <div className="flex items-center justify-between gap-2">
+                                          <p className="text-xs font-semibold text-muted-foreground break-all">
+                                            {key}
+                                          </p>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                              handleCopy(`${key}: ${value}`, execution.id)
+                                            }
+                                            className="flex-shrink-0 h-6 w-6 p-0"
+                                          >
+                                            {copiedId === execution.id ? (
+                                              <Check className="h-3 w-3" />
+                                            ) : (
+                                              <Copy className="h-3 w-3" />
+                                            )}
+                                          </Button>
+                                        </div>
+                                        <code className="text-xs break-all font-mono text-foreground bg-background p-2 rounded border border-border/30">
+                                          {String(value)}
+                                        </code>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">
+                                  No headers
+                                </p>
+                              )}
+                            </TabsContent>
 
-                    {job?.next_run_at && (
-                      <div className="border-t pt-4">
-                        <p className="text-xs text-muted-foreground mb-1">Next Run</p>
-                        <p className="text-sm font-medium">
-                          {formatDistanceToNow(new Date(job.next_run_at), { addSuffix: true })}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(job.next_run_at).toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-
-                    {job?.last_run_at && (
-                      <div className="border-t pt-4">
-                        <p className="text-xs text-muted-foreground mb-1">Last Run</p>
-                        <p className="text-sm font-medium">
-                          {formatDistanceToNow(new Date(job.last_run_at), { addSuffix: true })}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(job.last_run_at).toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </FadeIn>
-          </div>
+                            <TabsContent value="body" className="mt-4">
+                              {execution.response.body ? (
+                                <div className="relative border border-border/50 rounded-lg overflow-hidden">
+                                  <div className="absolute top-2 right-2 z-10">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0 bg-background/80 backdrop-blur-sm"
+                                      onClick={() =>
+                                        handleCopy(execution.response.body, execution.id)
+                                      }
+                                    >
+                                      {copiedId === execution.id ? (
+                                        <Check className="h-3.5 w-3.5" />
+                                      ) : (
+                                        <Copy className="h-3.5 w-3.5" />
+                                      )}
+                                    </Button>
+                                  </div>
+                                  <pre className="max-h-[400px] overflow-auto p-4 text-xs bg-muted">
+                                    <code className="language-json break-words whitespace-pre-wrap">
+                                      {(() => {
+                                        try {
+                                          return JSON.stringify(
+                                            JSON.parse(execution.response.body),
+                                            null,
+                                            2
+                                          );
+                                        } catch {
+                                          return execution.response.body;
+                                        }
+                                      })()}
+                                    </code>
+                                  </pre>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-center text-muted-foreground py-4">
+                                  No body
+                                </p>
+                              )}
+                            </TabsContent>
+                          </Tabs>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         </div>
       </div>
 

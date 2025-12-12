@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Plus,
   CircleMinus,
@@ -45,7 +44,7 @@ const webhookSchema = z.object({
   enabled: z.boolean(),
   webhookUrl: z.string().url('Must be a valid URL'),
   httpMethod: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
-  contentType: z.string().min(1, 'Content type is required'),
+  contentType: z.string().optional(),
   bodyTemplate: z.string().optional(),
   headers: z.array(z.object({ key: z.string(), value: z.string() })),
   queryParams: z.array(z.object({ key: z.string(), value: z.string() })),
@@ -55,6 +54,8 @@ type WebhookFormData = z.infer<typeof webhookSchema>;
 
 // Common cron presets
 const CRON_PRESETS = [
+  { label: 'Every 5 seconds', value: '*/5 * * * * *', description: 'Runs every 5 seconds' },
+  { label: 'Every 10 seconds', value: '*/10 * * * * *', description: 'Runs every 10 seconds' },
   { label: 'Every minute', value: '* * * * *', description: 'Runs every minute' },
   { label: 'Every 5 minutes', value: '*/5 * * * *', description: 'Runs every 5 minutes' },
   { label: 'Every hour', value: '0 * * * *', description: 'Runs at minute 0 of every hour' },
@@ -110,7 +111,7 @@ const EditWebhookPage = () => {
       enabled: true,
       httpMethod: 'POST',
       contentType: 'application/json',
-      headers: [],
+      headers: [{ key: 'Content-Type', value: 'application/json' }],
       queryParams: [],
     },
   });
@@ -118,7 +119,6 @@ const EditWebhookPage = () => {
   const headers = watch('headers');
   const queryParams = watch('queryParams');
   const httpMethod = watch('httpMethod');
-  const enabled = watch('enabled');
 
   // Check for returned cron expression from cron builder
   useEffect(() => {
@@ -132,6 +132,19 @@ const EditWebhookPage = () => {
   // Populate form when webhook data loads
   useEffect(() => {
     if (webhook) {
+      const existingHeaders = webhook.headers
+        ? Object.entries(webhook.headers).map(([key, value]) => ({ key, value }))
+        : [];
+
+      // Check if Content-Type header exists, if not add it
+      const hasContentType = existingHeaders.some((h) => h.key.toLowerCase() === 'content-type');
+      const headers = hasContentType
+        ? existingHeaders
+        : [
+            { key: 'Content-Type', value: webhook.content_type || 'application/json' },
+            ...existingHeaders,
+          ];
+
       reset({
         jobName: webhook.job?.name || '',
         schedule: webhook.job?.schedule || '',
@@ -139,11 +152,9 @@ const EditWebhookPage = () => {
         enabled: webhook.job?.enabled ?? true,
         webhookUrl: webhook.url,
         httpMethod: webhook.method,
-        contentType: webhook.content_type,
+        contentType: webhook.content_type || 'application/json',
         bodyTemplate: webhook.body_template || '',
-        headers: webhook.headers
-          ? Object.entries(webhook.headers).map(([key, value]) => ({ key, value }))
-          : [],
+        headers,
         queryParams: webhook.query_params
           ? Object.entries(webhook.query_params).map(([key, value]) => ({ key, value }))
           : [],
@@ -159,6 +170,11 @@ const EditWebhookPage = () => {
   };
 
   const removeHeader = (index: number) => {
+    const headerToRemove = headers[index];
+    // Prevent removal of Content-Type header
+    if (headerToRemove?.key.toLowerCase() === 'content-type') {
+      return;
+    }
     setValue(
       'headers',
       headers.filter((_, i) => i !== index)
@@ -194,6 +210,10 @@ const EditWebhookPage = () => {
         {} as Record<string, string>
       );
 
+      // Extract Content-Type from headers
+      const contentType =
+        headersObj['Content-Type'] || headersObj['content-type'] || 'application/json';
+
       const queryParamsObj = data.queryParams.reduce(
         (acc, { key, value }) => {
           if (key.trim()) acc[key] = value;
@@ -210,7 +230,7 @@ const EditWebhookPage = () => {
           headers: Object.keys(headersObj).length > 0 ? headersObj : undefined,
           query_params: Object.keys(queryParamsObj).length > 0 ? queryParamsObj : undefined,
           body_template: data.bodyTemplate || undefined,
-          content_type: data.contentType,
+          content_type: contentType,
           job: {
             name: data.jobName,
             schedule: data.schedule,
@@ -221,7 +241,7 @@ const EditWebhookPage = () => {
       });
 
       // Redirect to dashboard after success
-      setTimeout(() => navigate('/dashboard'), 1500);
+      setTimeout(() => navigate('/'), 1500);
     } catch (error) {
       console.error('Failed to update webhook:', error);
     }
@@ -263,7 +283,7 @@ const EditWebhookPage = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 The webhook you're trying to edit could not be found.
               </p>
-              <Button onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
+              <Button onClick={() => navigate('/')}>Return to Dashboard</Button>
             </div>
           </FadeIn>
         </div>
@@ -275,19 +295,20 @@ const EditWebhookPage = () => {
     <TooltipProvider>
       <div className="min-h-screen bg-background p-6 pl-24">
         <div className="container mx-auto max-w-7xl">
+          {/* Header */}
+          <FadeIn>
+            <div className="mb-6">
+              <div className="flex items-center gap-2">
+                <Zap className="h-6 w-6 text-primary" />
+                <h1 className="text-3xl font-bold">{webhook.job?.name || 'Unnamed Webhook'}</h1>
+              </div>
+              <p className="text-muted-foreground text-sm mt-2">{webhook.url}</p>
+            </div>
+          </FadeIn>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column - Form */}
             <div className="lg:col-span-2 space-y-6">
-              <FadeIn>
-                <div className="flex items-center gap-2.5">
-                  <Zap className="h-7 w-7 text-primary" />
-                  <div className="flex flex-col">
-                    <h1 className="text-xl font-bold">{webhook.job?.name || 'Unnamed Webhook'}</h1>
-                    <p className="text-sm text-muted-foreground">{webhook.url}</p>
-                  </div>
-                </div>
-              </FadeIn>
-
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                 {/* Basic Configuration Section */}
                 <FadeIn delay={0.1}>
@@ -319,18 +340,41 @@ const EditWebhookPage = () => {
                           )}
                         </div>
 
-                        {/* Webhook URL */}
+                        {/* HTTP Method & Webhook URL - Merged like Postman */}
                         <div className="space-y-1.5">
                           <Label htmlFor="webhookUrl" className="text-xs font-medium">
                             Webhook URL <span className="text-destructive">*</span>
                           </Label>
-                          <Input
-                            id="webhookUrl"
-                            {...register('webhookUrl')}
-                            placeholder="https://api.example.com/webhook"
-                            type="url"
-                            className="h-9 font-mono text-sm"
-                          />
+                          <div className="flex items-center border border-input rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                            <Select
+                              value={httpMethod}
+                              onValueChange={(value) => {
+                                if (value) setValue('httpMethod', value as HttpMethod);
+                              }}
+                            >
+                              <SelectTrigger className="h-9 w-[100px] border-0 border-r border-input rounded-none focus:ring-0 focus:ring-offset-0 font-mono text-sm font-semibold">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {HTTP_METHODS.map((method) => (
+                                  <SelectItem
+                                    key={method.value}
+                                    value={method.value}
+                                    className="font-mono"
+                                  >
+                                    {method.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              id="webhookUrl"
+                              {...register('webhookUrl')}
+                              placeholder="https://api.example.com/webhook"
+                              type="url"
+                              className="h-9 font-mono text-sm border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 flex-1"
+                            />
+                          </div>
                           {errors.webhookUrl && (
                             <p className="text-xs text-destructive flex items-center gap-1">
                               <AlertCircle className="h-3 w-3" />
@@ -434,23 +478,6 @@ const EditWebhookPage = () => {
                             </div>
                           </div>
                         </div>
-
-                        {/* Enabled Toggle */}
-                        <div className="flex items-center justify-between space-y-0 rounded-md border p-4">
-                          <div className="space-y-0.5">
-                            <Label htmlFor="enabled" className="text-xs font-medium">
-                              Enabled
-                            </Label>
-                            <p className="text-xs text-muted-foreground">
-                              Enable or disable this scheduled webhook
-                            </p>
-                          </div>
-                          <Switch
-                            id="enabled"
-                            checked={enabled}
-                            onCheckedChange={(checked) => setValue('enabled', checked)}
-                          />
-                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -467,75 +494,10 @@ const EditWebhookPage = () => {
                     </div>
                     <CardContent className="px-6 pb-6">
                       <div className="space-y-4 pt-2">
-                        {/* HTTP Method & Content Type */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* HTTP Method */}
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-medium">
-                              HTTP Method <span className="text-destructive">*</span>
-                            </Label>
-                            <ToggleGroup
-                              type="single"
-                              value={httpMethod}
-                              onValueChange={(value) => {
-                                if (value) setValue('httpMethod', value as HttpMethod);
-                              }}
-                              className="justify-start gap-2"
-                            >
-                              {HTTP_METHODS.map((method) => (
-                                <ToggleGroupItem
-                                  key={method.value}
-                                  value={method.value}
-                                  className="px-4 h-9 font-mono text-sm border border-input data-[state=on]:bg-foreground data-[state=on]:text-background data-[state=on]:border-foreground"
-                                >
-                                  {method.label}
-                                </ToggleGroupItem>
-                              ))}
-                            </ToggleGroup>
-                          </div>
-
-                          {/* Content Type */}
-                          <div className="space-y-1.5">
-                            <Label htmlFor="contentType" className="text-xs font-medium">
-                              Content Type <span className="text-destructive">*</span>
-                            </Label>
-                            <Select
-                              value={watch('contentType')}
-                              onValueChange={(value) => setValue('contentType', value)}
-                            >
-                              <SelectTrigger id="contentType" className="h-9">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="application/json" className="text-sm">
-                                  application/json
-                                </SelectItem>
-                                <SelectItem
-                                  value="application/x-www-form-urlencoded"
-                                  className="text-sm"
-                                >
-                                  application/x-www-form-urlencoded
-                                </SelectItem>
-                                <SelectItem value="text/plain" className="text-sm">
-                                  text/plain
-                                </SelectItem>
-                                <SelectItem value="application/xml" className="text-sm">
-                                  application/xml
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
                         {/* Headers */}
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs font-medium">
-                              Headers
-                              <span className="text-xs text-muted-foreground font-normal ml-1.5">
-                                (Optional)
-                              </span>
-                            </Label>
+                            <Label className="text-xs font-medium">Headers</Label>
                             <Button
                               type="button"
                               onClick={addHeader}
@@ -547,22 +509,27 @@ const EditWebhookPage = () => {
                               Add
                             </Button>
                           </div>
-                          {headers.length === 0 ? (
-                            <div className="border border-dashed rounded-md p-3 bg-muted/10">
-                              <p className="text-xs text-muted-foreground text-center">
-                                No headers added yet. Click "Add" to include custom headers.
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="space-y-1.5 border rounded-md p-3 bg-muted/20">
-                              {headers.map((_, index) => (
+                          <div className="space-y-1.5 border rounded-md p-3 bg-muted/20">
+                            {headers.map((header, index) => {
+                              const isContentType = header.key.toLowerCase() === 'content-type';
+                              return (
                                 <div key={index} className="flex gap-1.5">
                                   <Button
                                     type="button"
                                     onClick={() => removeHeader(index)}
                                     size="icon"
                                     variant="ghost"
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    disabled={isContentType}
+                                    className={`h-8 w-8 ${
+                                      isContentType
+                                        ? 'text-muted-foreground cursor-not-allowed opacity-50'
+                                        : 'text-destructive hover:text-destructive'
+                                    }`}
+                                    title={
+                                      isContentType
+                                        ? 'Content-Type cannot be removed'
+                                        : 'Remove header'
+                                    }
                                   >
                                     <CircleMinus className="h-4 w-4" />
                                   </Button>
@@ -570,16 +537,21 @@ const EditWebhookPage = () => {
                                     {...register(`headers.${index}.key`)}
                                     placeholder="Key (e.g., Authorization)"
                                     className="flex-1 h-8 text-sm"
+                                    disabled={isContentType}
                                   />
                                   <Input
                                     {...register(`headers.${index}.value`)}
-                                    placeholder="Value (e.g., Bearer token123)"
+                                    placeholder={
+                                      isContentType
+                                        ? 'Content-Type value'
+                                        : 'Value (e.g., Bearer token123)'
+                                    }
                                     className="flex-1 h-8 text-sm"
                                   />
                                 </div>
-                              ))}
-                            </div>
-                          )}
+                              );
+                            })}
+                          </div>
                         </div>
 
                         {/* Query Parameters */}
@@ -668,7 +640,7 @@ const EditWebhookPage = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => navigate('/dashboard')}
+                      onClick={() => navigate('/')}
                       disabled={isSubmitting}
                       className="h-9"
                     >
